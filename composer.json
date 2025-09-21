@@ -1,5 +1,5 @@
 {
-    "name": "belocal/php-sdk",
+    "name": "belocal/sdk",
     "type": "library",
     "description": "PHP library for text translation via API",
     "license": "MIT",
