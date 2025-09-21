@@ -1,0 +1,22 @@
+{
+    "name": "belocal/sdk",
+    "type": "library",
+    "description": "PHP library for text translation via API",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "BeLocal\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "bobredobre",
+            "email": "bobredobre@belocal.dev"
+        }
+    ],
+    "require": {
+        "php": ">=7.0",
+        "ext-curl": "*",
+        "ext-json": "*"
+    }
+}
