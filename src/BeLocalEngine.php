@@ -8,122 +8,125 @@ namespace BeLocal;
  * BeLocalEngine - A PHP library for text translation via API
  * 
  * This library provides functionality to translate text using a translation API.
- * It uses cURL for HTTP requests with keep-alive connections.
  */
 class BeLocalEngine
 {
     /**
-     * @var string Base URL for the translation API
+     * @var Transport The transport layer for API communication
      */
-    private $baseUrl;
-
-    /**
-     * @var string API key for authentication
-     */
-    private $apiKey;
-
-    /**
-     * @var int Timeout in seconds for API requests
-     */
-    private $timeout;
-
-    /**
-     * @var resource cURL handle
-     */
-    private $curlHandle;
+    private $transport;
 
     /**
      * Constructor
+     *
+     * @param Transport $transport
+     */
+    public function __construct(Transport $transport)
+    {
+        $this->transport = $transport;
+    }
+
+    /**
+     * Factory for creating without creating transport
      *
      * @param string $apiKey API key for authentication
      * @param string $baseUrl Base URL for the translation API
      * @param int $timeout Timeout in seconds for API requests
      */
-    public function __construct(
+    public static function withApiKey(
         string $apiKey,
-        string $baseUrl = 'https://dynamic.belocal.dev/v1/translate',
+        string $baseUrl = 'https://dynamic.belocal.dev',
         int $timeout = 30
-    ) {
-        $this->baseUrl = rtrim($baseUrl, '/');
-        $this->apiKey = $apiKey;
-        $this->timeout = $timeout;
-
-        $this->initCurl();
+    ): self {
+        return new self(new Transport($apiKey, $baseUrl, $timeout));
     }
 
-    private function initCurl()
+
+    /**
+     * @param array<string> $texts
+     * @param string $lang
+     * @param array $context
+     * @return TranslateManyResult
+     */
+    public function translateMany(array $texts, string $lang, array $context = []): TranslateManyResult
     {
-        $this->curlHandle = curl_init();
+        if (count($texts) === 0 || $lang === '') {
+            return new TranslateManyResult($texts, false);
+        }
 
-        curl_setopt($this->curlHandle, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($this->curlHandle, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($this->curlHandle, CURLOPT_MAXREDIRS, 5);
-        curl_setopt($this->curlHandle, CURLOPT_TIMEOUT, $this->timeout);
+        $requestIds = [];
+        $batchRequestData = [];
+        foreach ($texts as $text) {
+            $requestId = uniqid();
+            $requestIds []= $requestId;
 
-        curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPALIVE, 1);
-        curl_setopt($this->curlHandle, CURLOPT_FORBID_REUSE, false);
-        curl_setopt($this->curlHandle, CURLOPT_FRESH_CONNECT, false);
-        curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, array(
-            'Connection: keep-alive',
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $this->apiKey
-        ));
+            if ($text === '') {
+                continue;
+            }
+
+            $payload = [
+                'text' => $text,
+                'lang' => $lang,
+            ];
+
+            if (!empty($context)) {
+                $payload['ctx'] = $context;
+            }
+
+            $batchRequestData[] = [
+                'request_id' => $requestId,
+                'payload' => $payload,
+            ];
+        }
+
+        if (count($batchRequestData) === 0) {
+            return new TranslateManyResult($texts, false);
+        }
+
+        $response = $this->transport->sendBatch($batchRequestData);
+
+        return TranslateManyResult::fromResponseAndRequestIds($requestIds, $response);
     }
 
     /**
-     * Translate text
-     * 
-     * @param string $text Text to translate
-     * @param string $lang Target language code
-     * @param array $context Additional context for translation (optional)
-     * @return string Translated text or original text on error
-     * @throws \Exception If API request fails
+     * @param string $text
+     * @param string $lang
+     * @param array  $context
      */
-    public function t(string $text, string $lang, array $context = [])
+    public function translate(string $text, string $lang, array $context = []): TranslateResult
     {
-        if (empty($text)) {
-            return $text;
+        if ($text === '' || $lang === '') {
+            return new TranslateResult($text, false);
         }
 
-        try {
-            $data = array(
-                'text' => $text,
-                'lang' => $lang
-            );
+        $data = ['text' => $text, 'lang' => $lang];
 
-            if (!empty($context)) {
-                $data['ctx'] = $context;
-            }
-
-            curl_setopt($this->curlHandle, CURLOPT_URL, $this->baseUrl);
-            curl_setopt($this->curlHandle, CURLOPT_POST, true);
-            curl_setopt($this->curlHandle, CURLOPT_POSTFIELDS, json_encode($data));
-
-            $response = curl_exec($this->curlHandle);
-
-            if ($response === false) {
-                $error = curl_error($this->curlHandle);
-                $errno = curl_errno($this->curlHandle);
-                throw new \Exception("cURL error ($errno): $error");
-            }
-
-            $httpCode = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
-            if ($httpCode !== 200) {
-                throw new \Exception("API returned non-200 status code: $httpCode");
-            }
-
-            $result = json_decode($response, true);
-
-            return $result['text'];
-        } catch (\Exception $e) {
-            return $text;
+        if (!empty($context)) {
+            $data['ctx'] = $context;
         }
+
+        $response = $this->transport->send($data);
+
+        return TranslateResult::fromResponse($response);
     }
 
-    public function __destruct()
+    /**
+     * Sugar for translate method
+     *
+     * @param string $text
+     * @param string $lang
+     * @param array  $context
+     * @param string|null $fallback
+     * @return string
+     */
+    public function t(string $text, string $lang, array $context = [], $fallback = null)
     {
-        if (is_resource($this->curlHandle)) {
-            curl_close($this->curlHandle);
+        $result = $this->translate($text, $lang, $context);
+
+        if ($result->isOk() && $result->getText() !== null) {
+            return $result->getText();
         }
+
+        return $fallback !== null ? $fallback : $text;
     }
 }
