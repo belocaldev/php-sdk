@@ -83,7 +83,7 @@ class BeLocalEngine
             return new TranslateManyResult($texts, false);
         }
 
-        $response = $this->transport->sendBatch($batchRequestData);
+        $response = $this->transport->sendBatch(['batch' => $batchRequestData]);
 
         return TranslateManyResult::fromResponseAndRequestIds($requestIds, $response);
     }
