@@ -74,7 +74,7 @@ class BeLocalEngine
             }
 
             $batchRequestData[] = [
-                'request_id' => $requestId,
+                'requestId' => $requestId,
                 'payload' => $payload,
             ];
         }
