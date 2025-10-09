@@ -123,7 +123,7 @@ class BeLocalEngine
     {
         $result = $this->translate($text, $lang, $context);
 
-        if ($result->isOk() && $result->getText() !== null) {
+        if ($result->isOk() && $result->getText()) {
             return $result->getText();
         }
 
