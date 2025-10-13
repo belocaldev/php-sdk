@@ -57,7 +57,7 @@ class BeLocalEngine
         $requestIds = [];
         $batchRequestData = [];
         foreach ($texts as $text) {
-            $requestId = uniqid();
+            $requestId = $this->buildRequestId($text, $lang, $context);
             $requestIds []= $requestId;
 
             if ($text === '') {
@@ -128,5 +128,10 @@ class BeLocalEngine
         }
 
         return $fallback !== null ? $fallback : $text;
+    }
+
+    private function buildRequestId(string $text, string $lang, array $context): string
+    {
+        return md5(json_encode([$text, $lang, $context]));
     }
 }
