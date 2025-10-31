@@ -168,6 +168,9 @@ class BeLocalEngine
 
     private function buildRequestId(string $text, string $lang, array $context): string
     {
+        if (!empty($context)) {
+            ksort($context);
+        }
         return md5(json_encode([$text, $lang, $context]));
     }
 }
