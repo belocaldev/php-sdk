@@ -12,6 +12,10 @@ namespace BeLocal;
  */
 class Transport
 {
+    const SDK_VERSION = '0.4.0';
+
+    const SDK_NAME = 'php';
+
     /**
      * @var string Base URL for the translation API
      */
@@ -69,7 +73,9 @@ class Transport
         curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, array(
             'Connection: keep-alive',
             'Content-Type: application/json',
-            'Authorization: Bearer ' . $this->apiKey
+            'Authorization: Bearer ' . $this->apiKey,
+            'X-Sdk: ' . self::SDK_NAME,
+            'X-Sdk-Version: ' . self::SDK_VERSION,
         ));
     }
 

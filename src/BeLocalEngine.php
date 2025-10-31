@@ -48,7 +48,7 @@ class BeLocalEngine
      * @param array $context
      * @return TranslateManyResult
      */
-    public function translateMany(array $texts, string $lang, array $context = []): TranslateManyResult
+    public function translateMany(array $texts, string $lang, string $sourceLang = '', array $context = []): TranslateManyResult
     {
         if (count($texts) === 0 || $lang === '') {
             return new TranslateManyResult($texts, false);
@@ -68,6 +68,10 @@ class BeLocalEngine
                 'text' => $text,
                 'lang' => $lang,
             ];
+
+            if (!empty($sourceLang)) {
+                $payload['source_lang'] = $sourceLang;
+            }
 
             if (!empty($context)) {
                 $payload['ctx'] = $context;
@@ -93,13 +97,17 @@ class BeLocalEngine
      * @param string $lang
      * @param array  $context
      */
-    public function translate(string $text, string $lang, array $context = []): TranslateResult
+    public function translate(string $text, string $lang, string $sourceLang = '', array $context = []): TranslateResult
     {
         if ($text === '' || $lang === '') {
             return new TranslateResult($text, false);
         }
 
         $data = ['text' => $text, 'lang' => $lang];
+
+        if (!empty($sourceLang)) {
+            $data['source_lang'] = $sourceLang;
+        }
 
         if (!empty($context)) {
             $data['ctx'] = $context;
@@ -115,19 +123,47 @@ class BeLocalEngine
      *
      * @param string $text
      * @param string $lang
-     * @param array  $context
+     * @param string $sourceLang
+     * @param string $context
      * @param string|null $fallback
      * @return string
      */
-    public function t(string $text, string $lang, array $context = [], $fallback = null)
+    public function t(string $text, string $lang, string $sourceLang = '', string $context = '', $fallback = null): string
     {
-        $result = $this->translate($text, $lang, $context);
+        $result = $this->translate($text, $lang, $sourceLang, ['user_ctx' => $context]);
 
         if ($result->isOk() && $result->getText()) {
             return $result->getText();
         }
 
         return $fallback !== null ? $fallback : $text;
+    }
+
+    /**
+     * Sugar for translateMany method
+     *
+     * @param array<string> $texts
+     * @param string $lang
+     * @param string $sourceLang
+     * @param string $context
+     * @return array<string>
+     */
+    public function tMany(array $texts, string $lang, string $sourceLang = '', string $context = ''): array
+    {
+        $result = $this->translateMany($texts, $lang, $sourceLang, ['user_ctx' => $context]);
+
+        if ($result->isOk() && $result->getTexts()) {
+            $translatedTexts = $result->getTexts();
+
+            foreach ($texts as $index => $originalText) {
+                if (!isset($translatedTexts[$index]) || $translatedTexts[$index] === null) {
+                    $translatedTexts[$index] = $originalText;
+                }
+            }
+            return $translatedTexts;
+        }
+
+        return $texts;
     }
 
     private function buildRequestId(string $text, string $lang, array $context): string
