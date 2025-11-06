@@ -12,7 +12,7 @@ namespace BeLocal;
  */
 class Transport
 {
-    const SDK_VERSION = '0.4.0';
+    const SDK_VERSION = '0.4.2';
 
     const SDK_NAME = 'php';
 
@@ -55,9 +55,6 @@ class Transport
         $this->initCurl();
     }
 
-    /**
-     * Initialize the cURL handle with common options
-     */
     private function initCurl()
     {
         $this->curlHandle = curl_init();
@@ -151,7 +148,6 @@ class Transport
                 );
             }
 
-            // No validation of response body keys - return the entire decoded response
             return new TranslateResponse($decoded, true, null, $httpCode, null, $response);
         } catch (\Throwable $e) {
             return new TranslateResponse(

@@ -87,13 +87,26 @@ final class TranslateResult
     public static function fromResponse(TranslateResponse $response): TranslateResult
     {
         $responseBody = $response->getResponseBody();
-        $text = is_array($responseBody) && isset($responseBody['text']) && is_string($responseBody['text']) 
+
+        $isOk = $response->isOk();
+
+        $text = (
+            is_array($responseBody)
+            && isset($responseBody['text'])
+            && is_string($responseBody['text'])
+            && isset($responseBody['status'])
+            && $responseBody['status'] !== 'error'
+        )
             ? $responseBody['text'] 
             : null;
 
+        if (isset($responseBody['status']) && $responseBody['status'] === 'error') {
+            $isOk = false;
+        }
+
         return new self(
             $text,
-            $response->isOk(),
+            $isOk,
             $response->getError(),
             $response->getHttpCode(),
             $response->getCurlErrno(),

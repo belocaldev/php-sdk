@@ -90,11 +90,22 @@ class TranslateManyResult
         $responseBody = $response->getResponseBody();
         $texts = [];
 
+        $isOk = $response->isOk();
+
         if (is_array($responseBody) && isset($responseBody['results']) && is_array($responseBody['results'])) {
             $resultMap = [];
             foreach ($responseBody['results'] as $result) {
-                if (isset($result['requestId']) && isset($result['data']['text'])) {
+                if (
+                    isset($result['requestId'])
+                    && isset($result['data']['text'])
+                    && isset($result['data']['status'])
+                    && $result['data']['status'] !== 'error'
+                ) {
                     $resultMap[$result['requestId']] = $result['data']['text'];
+                }
+
+                if (isset($result['data']['status']) && $result['data']['status'] === 'error') {
+                    $isOk = false;
                 }
             }
 
@@ -105,7 +116,7 @@ class TranslateManyResult
 
         return new self(
             $texts,
-            $response->isOk(),
+            $isOk,
             $response->getError(),
             $response->getHttpCode(),
             $response->getCurlErrno(),
