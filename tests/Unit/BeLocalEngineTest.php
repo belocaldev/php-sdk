@@ -130,27 +130,6 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
-     * Test the t method with fallback
-     */
-    public function testTMethodWithFallback()
-    {
-        $transport = $this->createMock(Transport::class);
-
-        $error = new BeLocalError('TEST_ERROR', 'Test error message');
-        $response = new TranslateResponse(null, false, $error, 500, null, null);
-
-        $transport->expects($this->once())
-            ->method('send')
-            ->willReturn($response);
-
-        $engine = new BeLocalEngine($transport);
-
-        $result = $engine->t('Hello', 'fr', '', '', 'Fallback Text');
-
-        $this->assertEquals('Fallback Text', $result);
-    }
-
-    /**
      * Test the tMany method (sugar for translateMany)
      */
     public function testTManyMethod()
@@ -262,5 +241,175 @@ class BeLocalEngineTest extends TestCase
         $this->assertCount(2, $result->getTexts());
         $this->assertNull($result->getTexts()[0]);
         $this->assertNull($result->getTexts()[1]);
+    }
+
+    /**
+     * Test that translateMany throws InvalidArgumentException when array contains non-string elements
+     */
+    public function testTranslateManyWithNonStringInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->translateMany(['Hello', 123, 'World'], 'fr');
+    }
+
+    /**
+     * Test that translateMany throws InvalidArgumentException when array contains null
+     */
+    public function testTranslateManyWithNullInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->translateMany(['Hello', null, 'World'], 'fr');
+    }
+
+    /**
+     * Test that translateMany throws InvalidArgumentException when array contains array element
+     */
+    public function testTranslateManyWithArrayInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->translateMany(['Hello', ['nested'], 'World'], 'fr');
+    }
+
+    /**
+     * Test that translateMany throws InvalidArgumentException when context has non-string keys
+     */
+    public function testTranslateManyWithNonStringKeyInContext()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Context keys must be strings');
+
+        $context = [0 => 'value', 'key' => 'value2'];
+        $engine->translateMany(['Hello', 'World'], 'fr', '', $context);
+    }
+
+    /**
+     * Test that translate throws InvalidArgumentException when context has non-string keys
+     */
+    public function testTranslateWithNonStringKeyInContext()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Context keys must be strings');
+
+        $context = [123 => 'value', 'key' => 'value2'];
+        $engine->translate('Hello', 'fr', '', $context);
+    }
+
+    /**
+     * Test that translateMany works correctly with valid context
+     */
+    public function testTranslateManyWithValidContext()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $responseData = [
+            'results' => [
+                [
+                    'requestId' => '123',
+                    'data' => ['text' => 'Bonjour', 'status' => 'translated']
+                ]
+            ]
+        ];
+        $response = new TranslateResponse($responseData, true, null, 200, null, null);
+
+        $transport->expects($this->once())
+            ->method('sendBatch')
+            ->willReturn($response);
+
+        $engine = new BeLocalEngine($transport);
+
+        $context = ['user_ctx' => 'test', 'cache_type' => 'editable'];
+        $result = $engine->translateMany(['Hello'], 'fr', '', $context);
+
+        $this->assertTrue($result->isOk());
+    }
+
+    /**
+     * Test that translate works correctly with valid context
+     */
+    public function testTranslateWithValidContext()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $responseData = ['text' => 'Bonjour', 'status' => 'translated'];
+        $response = new TranslateResponse($responseData, true, null, 200, null, null);
+
+        $transport->expects($this->once())
+            ->method('send')
+            ->willReturn($response);
+
+        $engine = new BeLocalEngine($transport);
+
+        $context = ['user_ctx' => 'test', 'cache_type' => 'editable'];
+        $result = $engine->translate('Hello', 'fr', '', $context);
+
+        $this->assertTrue($result->isOk());
+        $this->assertEquals('Bonjour', $result->getText());
+    }
+
+    /**
+     * Test that translateMany works correctly with empty array (validation passes, early return)
+     */
+    public function testTranslateManyWithEmptyArray()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->never())
+            ->method('sendBatch');
+
+        $engine = new BeLocalEngine($transport);
+
+        $result = $engine->translateMany([], 'fr');
+
+        $this->assertFalse($result->isOk());
+        $this->assertEquals([], $result->getTexts());
+    }
+
+    /**
+     * Test that tMany throws InvalidArgumentException when array contains non-string elements
+     */
+    public function testTManyWithNonStringInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->tMany(['Hello', 456, 'World'], 'fr');
+    }
+
+    /**
+     * Test that tManyEditable throws InvalidArgumentException when array contains non-string elements
+     */
+    public function testTManyEditableWithNonStringInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->tManyEditable(['Hello', true, 'World'], 'fr');
     }
 }

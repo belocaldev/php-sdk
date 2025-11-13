@@ -12,9 +12,11 @@ namespace BeLocal;
  */
 class Transport
 {
-    const SDK_VERSION = '0.4.2';
+    const SDK_VERSION = '0.4.3';
 
     const SDK_NAME = 'php';
+
+    const BASE_URL = 'https://dynamic.belocal.dev';
 
     /**
      * @var string Base URL for the translation API
@@ -40,16 +42,16 @@ class Transport
      * Constructor
      *
      * @param string $apiKey API key for authentication
-     * @param string $baseUrl Base URL for the translation API
+     * @param string $baseUrl Base URL for the translation API (optional, for testing)
      * @param int $timeout Timeout in seconds for API requests
      */
     public function __construct(
         string $apiKey,
-        string $baseUrl,
+        string $baseUrl = self::BASE_URL,
         int $timeout = 30
     ) {
-        $this->baseUrl = rtrim($baseUrl, '/');
         $this->apiKey = $apiKey;
+        $this->baseUrl = rtrim($baseUrl, '/');
         $this->timeout = $timeout;
 
         $this->initCurl();
@@ -92,12 +94,12 @@ class Transport
                 $err = json_last_error();
                 if ($err === JSON_ERROR_UTF8) {
                     throw new BeLocalException(
-                        new BeLocalError('INVALID_UTF8', 'Invalid UTF-8 string passed to json_encode()')
+                        new BeLocalError(BeLocalErrorCode::JSON_UTF8, 'Invalid UTF-8 string passed to json_encode()')
                     );
                 }
 
                 throw new BeLocalException(
-                    new BeLocalError('JSON_ENCODE_FAILED', 'json_encode() failed with error code: ' . $err)
+                    new BeLocalError(BeLocalErrorCode::JSON_ENCODE, 'json_encode() failed with error code: ' . $err)
                 );
             }
 
@@ -118,7 +120,7 @@ class Transport
                 return new TranslateResponse(
                     null,
                     false,
-                    new BeLocalError('NETWORK', "cURL error ($errno): $error"),
+                    new BeLocalError(BeLocalErrorCode::NETWORK, "cURL error ($errno): $error"),
                     null,
                     $errno
                 );
@@ -126,14 +128,24 @@ class Transport
 
             $httpCode = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
             if ($httpCode !== 200) {
-                return new TranslateResponse(
-                    null,
-                    false,
-                    new BeLocalError('HTTP_NON_200', 'API returned non-200 status code: ' . $httpCode),
-                    $httpCode,
-                    null,
-                    $response
-                );
+                return match ($httpCode) {
+                    402 => new TranslateResponse(
+                        null,
+                        false,
+                        new BeLocalError(BeLocalErrorCode::PAYMENT_REQUIRED, 'Insufficient balance'),
+                        $httpCode,
+                        null,
+                        $response
+                    ),
+                    default => new TranslateResponse(
+                        null,
+                        false,
+                        new BeLocalError(BeLocalErrorCode::HTTP_NON_200, 'API returned non-200 status code: ' . $httpCode),
+                        $httpCode,
+                        null,
+                        $response
+                    ),
+                };
             }
 
             $decoded = json_decode($response, true);
@@ -141,7 +153,7 @@ class Transport
                 return new TranslateResponse(
                     null,
                     false,
-                    new BeLocalError('DECODE', 'Invalid JSON response'),
+                    new BeLocalError(BeLocalErrorCode::DECODE, 'Invalid JSON response'),
                     $httpCode,
                     null,
                     $response
@@ -153,7 +165,7 @@ class Transport
             return new TranslateResponse(
                 null,
                 false,
-                new BeLocalError('UNCAUGHT', $e->getMessage())
+                new BeLocalError(BeLocalErrorCode::UNCAUGHT, $e->getMessage())
             );
         }
     }
@@ -185,7 +197,7 @@ class Transport
      */
     public function __destruct()
     {
-        if (is_resource($this->curlHandle)) {
+        if ($this->curlHandle !== null) {
             curl_close($this->curlHandle);
         }
     }

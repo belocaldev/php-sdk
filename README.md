@@ -11,7 +11,6 @@ A PHP library for text translation via API with HTTP/1.1 keep-alive support.
   - [Error Handling](#error-handling)
 - [API Documentation](#api-documentation)
 - [Features](#features)
-- [Examples](#examples)
 - [License](#license)
 
 ## Requirements
@@ -40,11 +39,10 @@ require_once 'vendor/autoload.php';
 // Import the BeLocalEngine class
 use BeLocal\BeLocalEngine;
 
-// Initialize the translation engine using the factory method
+// Initialize the translation engine
 $translator = BeLocalEngine::withApiKey(
-    'your-api-key-here',                                   // API key
-    'https://dynamic.belocal.dev',                         // API base URL (optional)
-    30                                                     // Timeout in seconds (optional)
+    'your-api-key-here', // API key
+    30                   // Timeout in seconds (optional)
 );
 
 // Translate text
@@ -52,10 +50,7 @@ $translatedText = $translator->t('Hello, world!', 'fr');
 
 echo $translatedText; // Output: Bonjour, monde!
 
-// You can also provide a custom fallback value (defaults to original text)
-$translatedText = $translator->t('Hello, world!', 'fr', [], 'Translation failed');
-
-// For more control, use the translate method which returns a TranslateResult object
+// For explicit error handling, use translate() which returns a TranslateResult object
 $result = $translator->translate('Hello, world!', 'fr');
 if ($result->isOk()) {
     echo $result->getText();
@@ -64,31 +59,25 @@ if ($result->isOk()) {
 }
 
 // Translate multiple texts at once
-$texts = ['Hello', 'World'];
-$results = $translator->translateMany($texts, 'fr');
-if ($results->isOk()) {
-    foreach ($results->getTexts() as $text) {
-        echo $text . ' ';
-    }
-}
+[$aTranslated, $bTranslated] = $translator->tMany(['Hello', 'World'], 'fr');
+// $aTranslated -> 'Bonjour', $bTranslated -> 'Monde'
 ```
 
 ### Error Handling
 
-By default, the library returns the original text if an error occurs during translation. This ensures your application continues to function even if the translation service is unavailable.
+Methods `t()`, `tEditable()`, `tMany()`, and `tManyEditable()` return the original text if an error occurs. This ensures your application continues to function even if the translation service is unavailable.
 
 ```php
 <?php
-// Default behavior - returns original text on error
+// Returns original text on error
 $translatedText = $translator->t('Hello, world!', 'fr');
 
-// If you want to handle errors explicitly, you can modify the t() method
-// or wrap it in your own try/catch block
-try {
-    $translatedText = $translator->t('Hello, world!', 'fr');
-    echo $translatedText;
-} catch (\Exception $e) {
-    echo "Translation error: " . $e->getMessage();
+// For explicit error handling, use translate() or translateMany()
+$result = $translator->translate('Hello, world!', 'fr');
+if ($result->isOk()) {
+    echo $result->getText();
+} else {
+    echo "Error: " . $result->getError()->getMessage();
 }
 ```
 
@@ -96,22 +85,11 @@ try {
 
 ### BeLocalEngine Class
 
-#### Constructor
-
-```php
-public function __construct(Transport $transport)
-```
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| $transport | Transport | Transport layer for API communication |
-
 #### Factory Method
 
 ```php
 public static function withApiKey(
     string $apiKey,
-    string $baseUrl = 'https://dynamic.belocal.dev',
     int $timeout = 30
 ): BeLocalEngine
 ```
@@ -119,83 +97,105 @@ public static function withApiKey(
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | $apiKey | string | Your API authentication key | Required |
-| $baseUrl | string | Base URL for the translation API | 'https://dynamic.belocal.dev' |
 | $timeout | int | Timeout in seconds for API requests | 30 |
 
 #### Methods
 
-##### t(string $text, string $lang, array $context = [], string $fallback = null)
+##### t(string $text, string $lang, string $sourceLang = '', string $context = '')
 
-Translates text to the specified language. This is a convenience method that returns the translated text directly.
-
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| $text | string | Text to translate | Required |
-| $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
-| $context | array | Optional context parameters to improve translation accuracy | [] |
-| $fallback | string | Value to return if translation fails | $text (original text) |
-
-**Returns:** string - Translated text or fallback value on error
-
-##### translate(string $text, string $lang, array $context = [])
-
-Translates text to the specified language and returns a TranslateResult object.
+Convenience method that translates text and returns the translated string directly.
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | $text | string | Text to translate | Required |
 | $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
-| $context | array | Optional context parameters to improve translation accuracy | [] |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
+| $context | string | Optional user context string to improve translation accuracy | '' |
 
-**Returns:** TranslateResult - Object containing the translation result and status information
+**Returns:** string - Translated text (or original text on error)
 
-##### translateMany(array $texts, string $lang, array $context = [])
+##### tEditable(string $text, string $lang, string $sourceLang = '', string $context = '')
 
-Translates multiple texts to the specified language in a single API call.
+Same as `t()`, but forces cache type = `editable` on the server side.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| $text | string | Text to translate | Required |
+| $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
+| $context | string | Optional user context string to improve translation accuracy | '' |
+
+**Returns:** string - Translated text (or original text on error)
+
+##### tMany(array $texts, string $lang, string $sourceLang = '', string $context = '')
+
+Batch variant of `t()`. Returns array of translated strings. Original text is returned for failed items.
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | $texts | array | Array of texts to translate | Required |
 | $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
+| $context | string | Optional user context string to improve translation accuracy | '' |
+
+**Returns:** array<string> - Translated texts (originals preserved on error)
+
+##### tManyEditable(array $texts, string $lang, string $sourceLang = '', string $context = '')
+
+Batch variant of `tEditable()`. Returns array of translated strings. Original text is returned for failed items.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| $texts | array | Array of texts to translate | Required |
+| $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
+| $context | string | Optional user context string to improve translation accuracy | '' |
+
+**Returns:** array<string> - Translated texts (originals preserved on error)
+
+##### translate(string $text, string $lang, string $sourceLang = '', array $context = [])
+
+Translates text and returns a TranslateResult object for explicit error handling.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| $text | string | Text to translate | Required |
+| $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
+| $context | array | Optional context parameters to improve translation accuracy | [] |
+
+**Returns:** TranslateResult - Object containing the translation result and status information
+
+##### translateMany(array $texts, string $lang, string $sourceLang = '', array $context = [])
+
+Translates multiple texts in a single API call. Returns TranslateManyResult for explicit error handling.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| $texts | array | Array of texts to translate | Required |
+| $lang | string | Target language code (e.g., 'fr', 'es', 'de') | Required |
+| $sourceLang | string | Source language code (auto-detected when empty) | '' |
 | $context | array | Optional context parameters to improve translation accuracy | [] |
 
 **Returns:** TranslateManyResult - Object containing the translation results and status information
 
 ### TranslateResult Class
 
-Contains the result of a single text translation.
+Result of a single translation.
 
-#### Methods
-
-##### getText(): ?string
-
-Returns the translated text or null if translation failed.
-
-##### isOk(): bool
-
-Returns whether the translation was successful.
-
-##### getError(): ?BeLocalError
-
-Returns the error object if translation failed, or null if successful.
+**Methods:**
+- `getText(): ?string` - Translated text or null on failure
+- `isOk(): bool` - Whether translation succeeded
+- `getError(): ?BeLocalError` - Error object or null on success
 
 ### TranslateManyResult Class
 
-Contains the results of a batch translation.
+Result of a batch translation.
 
-#### Methods
-
-##### getTexts(): ?array
-
-Returns an array of translated texts or null if translation failed.
-
-##### isOk(): bool
-
-Returns whether the batch translation was successful.
-
-##### getError(): ?BeLocalError
-
-Returns the error object if translation failed, or null if successful.
+**Methods:**
+- `getTexts(): ?array` - Array of translated texts or null on failure
+- `isOk(): bool` - Whether batch translation succeeded
+- `getError(): ?BeLocalError` - Error object or null on success
 
 ## Features
 
@@ -209,3 +209,12 @@ Returns the error object if translation failed, or null if successful.
 ## License
 
 MIT
+
+
+## Pre-push tests
+
+To run unit tests automatically before every `git push` run:
+
+```bash
+printf '#!/usr/bin/env bash\n./vendor/bin/phpunit --configuration phpunit.xml\n' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+```
