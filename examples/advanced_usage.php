@@ -3,7 +3,8 @@
 /**
  * Advanced Usage Examples for BeLocal PHP SDK
  * 
- * This file demonstrates advanced patterns, error handling, and best practices
+ * This file demonstrates advanced usage of TranslateRequest and translateMultiRequest
+ * methods with real-world scenarios including entity context and cache usage.
  * 
  * Usage: php advanced_usage.php <api-key>
  */
@@ -12,8 +13,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use BeLocal\BeLocalEngine;
 use BeLocal\TranslateRequest;
-use BeLocal\TranslateResult;
-use BeLocal\TranslateManyResult;
 
 // Get API key from command line argument or environment variable
 $apiKey = null;
@@ -32,393 +31,287 @@ if (empty($apiKey)) {
 $engine = BeLocalEngine::withApiKey($apiKey);
 
 // ============================================================================
-// 1. Comprehensive Error Handling
+// Example 1: translateRequest() - Translating news article and comments
 // ============================================================================
 
-echo "=== Comprehensive Error Handling ===\n";
+echo "=== Example 1: Translating News Article and Comments ===\n";
+echo "Using translateRequest() to translate a news article and its comments\n\n";
 
-function handleTranslationResult(TranslateResult $result, string $originalText): string
-{
-    if ($result->isOk() && $result->getText()) {
-        return $result->getText();
-    }
-    
-    // Log error details
-    if ($result->getError()) {
-        $error = $result->getError();
-        error_log(sprintf(
-            'Translation error: %s (Code: %s, HTTP: %s, cURL: %s)',
-            $error->getMessage(),
-            $error->getCode(),
-            $result->getHttpCode() ?? 'N/A',
-            $result->getCurlErrno() ?? 'N/A'
-        ));
-    }
-    
-    // Return original text as fallback
-    return $originalText;
-}
+// News article content
+$newsArticle = 'Breaking: New technology breakthrough announced today. Scientists have developed a revolutionary method for sustainable energy production.';
 
-function handleManyTranslationResult(TranslateManyResult $result, array $originalTexts): array
-{
-    if ($result->isOk() && $result->getTexts()) {
-        $translatedTexts = $result->getTexts();
-        
-        // Ensure all texts are translated, fallback to original if null
-        foreach ($originalTexts as $index => $original) {
-            if (!isset($translatedTexts[$index]) || $translatedTexts[$index] === null) {
-                $translatedTexts[$index] = $original;
-            }
-        }
-        
-        return $translatedTexts;
-    }
-    
-    // Log error
-    if ($result->getError()) {
-        $error = $result->getError();
-        error_log(sprintf(
-            'Batch translation error: %s (Code: %s)',
-            $error->getMessage(),
-            $error->getCode()
-        ));
-    }
-    
-    // Return original texts as fallback
-    return $originalTexts;
-}
-
-// Example usage
-$result = $engine->translate('Hello, world!', 'es');
-$translated = handleTranslationResult($result, 'Hello, world!');
-echo "Translated with error handling: $translated\n\n";
-
-// ============================================================================
-// 2. Batch Translation with Retry Logic
-// ============================================================================
-
-echo "=== Batch Translation with Retry Logic ===\n";
-
-function translateWithRetry(
-    BeLocalEngine $engine,
-    array $texts,
-    string $lang,
-    string $sourceLang = '',
-    array $context = [],
-    int $maxRetries = 3
-): TranslateManyResult {
-    $attempt = 0;
-    
-    while ($attempt < $maxRetries) {
-        try {
-            $result = $engine->translateMany($texts, $lang, $sourceLang, $context);
-            
-            if ($result->isOk()) {
-                return $result;
-            }
-            
-            // Check if error is retryable (e.g., network error)
-            $error = $result->getError();
-            if ($error && $error->getCode() === 'NETWORK') {
-                $attempt++;
-                if ($attempt < $maxRetries) {
-                    sleep(1 * $attempt); // Exponential backoff
-                    continue;
-                }
-            }
-            
-            return $result;
-        } catch (\Exception $e) {
-            $attempt++;
-            if ($attempt >= $maxRetries) {
-                throw $e;
-            }
-            sleep(1 * $attempt);
-        }
-    }
-    
-    throw new \RuntimeException('Max retries exceeded');
-}
-
-$texts = ['Hello', 'Goodbye', 'Thank you'];
-$result = translateWithRetry($engine, $texts, 'fr');
-if ($result->isOk()) {
-    echo "Translated with retry: " . implode(', ', array_filter($result->getTexts() ?? [])) . "\n";
-}
-echo "\n";
-
-// ============================================================================
-// 3. Processing Multiple Requests Efficiently
-// ============================================================================
-
-echo "=== Processing Multiple Requests Efficiently ===\n";
-
-// Group requests by language for better caching
-function groupRequestsByLanguage(array $requests): array
-{
-    $grouped = [];
-    
-    foreach ($requests as $request) {
-        $lang = $request->getLang();
-        if (!isset($grouped[$lang])) {
-            $grouped[$lang] = [];
-        }
-        $grouped[$lang][] = $request;
-    }
-    
-    return $grouped;
-}
-
-// Create requests for different languages
-$requests = [
-    new TranslateRequest(['Hello', 'World'], 'es', 'en', ['entity_key' => 'product']),
-    new TranslateRequest(['Goodbye'], 'es', 'en', ['entity_key' => 'product']),
-    new TranslateRequest(['Hello', 'World'], 'fr', 'en', ['entity_key' => 'product']),
-    new TranslateRequest(['Thank you'], 'fr', 'en', ['entity_key' => 'product']),
+// Comments to the article
+$comments = [
+    'This is amazing news! Can\'t wait to see this in action.',
+    'I have some concerns about the environmental impact.',
+    'Great progress! When will this be available to the public?',
+    'This could change everything. Very exciting!'
 ];
 
-// Group by language
-$grouped = groupRequestsByLanguage($requests);
+// Combine article and comments into one request
+$allTexts = array_merge([$newsArticle], $comments);
 
-// Process each language group
-foreach ($grouped as $lang => $langRequests) {
-    echo "Processing $lang requests...\n";
-    $langRequests = $engine->translateMultiRequest($langRequests);
-    
-    foreach ($langRequests as $request) {
-        if ($request->isSuccessful()) {
-            $translatedTexts = $request->getResult()->getTexts();
-            echo "  Translated: " . implode(', ', array_filter($translatedTexts ?? [])) . "\n";
-        }
-    }
-}
-echo "\n";
-
-// ============================================================================
-// 4. Translation Cache Management
-// ============================================================================
-
-echo "=== Translation Cache Management ===\n";
-
-// Use editable cache for content that might be edited later
-function translateEditableContent(
-    BeLocalEngine $engine,
-    string $text,
-    string $lang,
-    string $sourceLang = ''
-): string {
-    return $engine->tEditable($text, $lang, $sourceLang, 'editable-content');
-}
-
-// Use regular cache for static content
-function translateStaticContent(
-    BeLocalEngine $engine,
-    string $text,
-    string $lang,
-    string $sourceLang = ''
-): string {
-    return $engine->t($text, $lang, $sourceLang, 'static-content');
-}
-
-$editableText = translateEditableContent($engine, 'Product description', 'es');
-echo "Editable content: $editableText\n";
-
-$staticText = translateStaticContent($engine, 'Copyright notice', 'es');
-echo "Static content: $staticText\n";
-echo "\n";
-
-// ============================================================================
-// 5. Context-Aware Translation
-// ============================================================================
-
-echo "=== Context-Aware Translation ===\n";
-
-class ProductTranslator
-{
-    private BeLocalEngine $engine;
-    
-    public function __construct(BeLocalEngine $engine)
-    {
-        $this->engine = $engine;
-    }
-    
-    public function translateProduct(array $productData, string $targetLang): array
-    {
-        $context = [
-            'entity_key' => 'product',
-            'entity_id' => (string)$productData['id'],
-        ];
-        
-        $translated = [];
-        
-        // Translate product name
-        if (isset($productData['name'])) {
-            $result = $this->engine->translate(
-                $productData['name'],
-                $targetLang,
-                $productData['source_lang'] ?? '',
-                $context
-            );
-            $translated['name'] = $result->isOk() ? $result->getText() : $productData['name'];
-        }
-        
-        // Translate product description
-        if (isset($productData['description'])) {
-            $result = $this->engine->translate(
-                $productData['description'],
-                $targetLang,
-                $productData['source_lang'] ?? '',
-                $context
-            );
-            $translated['description'] = $result->isOk() ? $result->getText() : $productData['description'];
-        }
-        
-        return $translated;
-    }
-}
-
-$productData = [
-    'id' => 123,
-    'name' => 'Wireless Mouse',
-    'description' => 'Ergonomic wireless mouse with long battery life',
-    'source_lang' => 'en',
-];
-
-$translator = new ProductTranslator($engine);
-$translated = $translator->translateProduct($productData, 'es');
-
-echo "Product translation:\n";
-echo "  Name: " . ($translated['name'] ?? 'N/A') . "\n";
-echo "  Description: " . ($translated['description'] ?? 'N/A') . "\n";
-echo "\n";
-
-// ============================================================================
-// 6. Bulk Translation with Progress Tracking
-// ============================================================================
-
-echo "=== Bulk Translation with Progress Tracking ===\n";
-
-function translateBulk(
-    BeLocalEngine $engine,
-    array $items,
-    string $targetLang,
-    ?callable $onProgress = null
-): array {
-    $total = count($items);
-    $translated = [];
-    $batchSize = 10; // Process in batches
-    
-    for ($i = 0; $i < $total; $i += $batchSize) {
-        $batch = array_slice($items, $i, $batchSize);
-        $texts = array_column($batch, 'text');
-        
-        $result = $engine->translateMany($texts, $targetLang);
-        
-        if ($result->isOk()) {
-            $translatedTexts = $result->getTexts();
-            foreach ($batch as $index => $item) {
-                $item['translated'] = $translatedTexts[$index] ?? $item['text'];
-                $translated[] = $item;
-            }
-        } else {
-            // Fallback to original texts
-            foreach ($batch as $item) {
-                $item['translated'] = $item['text'];
-                $translated[] = $item;
-            }
-        }
-        
-        // Report progress
-        if ($onProgress) {
-            $onProgress(count($translated), $total);
-        }
-    }
-    
-    return $translated;
-}
-
-$items = [
-    ['id' => 1, 'text' => 'Hello'],
-    ['id' => 2, 'text' => 'Goodbye'],
-    ['id' => 3, 'text' => 'Thank you'],
-];
-
-$translated = translateBulk(
-    $engine,
-    $items,
-    'fr',
-    fn($processed, $total) => print("Progress: $processed/$total\n")
-);
-
-echo "Bulk translation completed: " . count($translated) . " items\n";
-echo "\n";
-
-// ============================================================================
-// 7. Multi-Language Translation Pipeline
-// ============================================================================
-
-echo "=== Multi-Language Translation Pipeline ===\n";
-
-function translateToMultipleLanguages(
-    BeLocalEngine $engine,
-    string $text,
-    array $targetLanguages,
-    string $sourceLang = ''
-): array {
-    $results = [];
-    
-    foreach ($targetLanguages as $lang) {
-        $result = $engine->translate($text, $lang, $sourceLang);
-        $results[$lang] = $result->isOk() ? $result->getText() : $text;
-    }
-    
-    return $results;
-}
-
-$text = 'Welcome to our store';
-$languages = ['es', 'fr', 'de', 'it'];
-$translations = translateToMultipleLanguages($engine, $text, $languages, 'en');
-
-echo "Multi-language translation:\n";
-foreach ($translations as $lang => $translated) {
-    echo "  $lang: $translated\n";
-}
-echo "\n";
-
-// ============================================================================
-// 8. Working with TranslateRequest Results
-// ============================================================================
-
-echo "=== Working with TranslateRequest Results ===\n";
-
+// Create translation request for news article and comments
 $request = new TranslateRequest(
-    ['Hello world', 'How are you?'],
-    'es',
-    'en',
-    ['entity_key' => 'product', 'entity_id' => '123']
+    $allTexts,
+    'ru', // Target language: Russian
+    'en', // Source language: English
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'News article published on technology blog with user comments section displayed below the article'
+    ]
 );
 
 // Translate the request
-$requests = $engine->translateMultiRequest([$request]);
-$request = $requests[0];
+$request = $engine->translateRequest($request);
 
-// Check result
 if ($request->isSuccessful()) {
     $result = $request->getResult();
     $translatedTexts = $result->getTexts();
     
-    echo "Successfully translated:\n";
-    foreach ($translatedTexts ?? [] as $index => $translated) {
-        echo "  " . ($index + 1) . ". $translated\n";
+    echo "Original article (EN):\n";
+    echo "  $newsArticle\n\n";
+    
+    echo "Translated article (RU):\n";
+    echo "  " . ($translatedTexts[0] ?? 'N/A') . "\n\n";
+    
+    echo "Original comments (EN):\n";
+    foreach ($comments as $index => $comment) {
+        echo "  Comment " . ($index + 1) . ": $comment\n";
     }
     
-    // Access result details
-    echo "  HTTP Code: " . ($result->getHttpCode() ?? 'N/A') . "\n";
-    echo "  Is OK: " . ($result->isOk() ? 'Yes' : 'No') . "\n";
+    echo "\nTranslated comments (RU):\n";
+    foreach ($comments as $index => $comment) {
+        $translatedComment = $translatedTexts[$index + 1] ?? $comment;
+        echo "  Comment " . ($index + 1) . ": $translatedComment\n";
+    }
 } else {
     $result = $request->getResult();
     $error = $result->getError();
     echo "Translation failed: " . ($error ? $error->getMessage() : 'Unknown error') . "\n";
 }
+
 echo "\n";
 
+// ============================================================================
+// Example 2: translateMultiRequest() - Translating product cards
+// ============================================================================
+
+echo "=== Example 2: Translating Product Cards ===\n";
+echo "Using translateMultiRequest() to translate three product cards with entity context\n\n";
+
+// Product 1: Electronics category
+$product1 = [
+    'id' => 1001,
+    'name' => 'Wireless Bluetooth Headphones',
+    'description' => 'Premium noise-cancelling headphones with 30-hour battery life and superior sound quality.',
+    'specs' => [
+        'Battery Life: 30 hours',
+        'Connectivity: Bluetooth 5.0',
+        'Weight: 250g',
+        'Color: Black'
+    ]
+];
+
+// Product 2: Clothing category
+$product2 = [
+    'id' => 2002,
+    'name' => 'Organic Cotton T-Shirt',
+    'description' => 'Comfortable and sustainable t-shirt made from 100% organic cotton. Perfect for everyday wear.',
+    'specs' => [
+        'Material: 100% Organic Cotton',
+        'Sizes: S, M, L, XL',
+        'Care: Machine washable',
+        'Color: Navy Blue'
+    ]
+];
+
+// Product 3: Home & Garden category
+$product3 = [
+    'id' => 3003,
+    'name' => 'Smart LED Light Bulb',
+    'description' => 'Energy-efficient smart bulb with color changing capabilities. Compatible with voice assistants.',
+    'specs' => [
+        'Wattage: 9W',
+        'Lumens: 800',
+        'Color Temperature: 2700K-6500K',
+        'Compatibility: Alexa, Google Home'
+    ]
+];
+
+// Create translation requests for each product
+// Each product includes name, description, and all specifications
+$requests = [];
+
+// Product 1: Electronics
+$product1Texts = array_merge(
+    [$product1['name']],
+    [$product1['description']],
+    $product1['specs']
+);
+$requests[] = new TranslateRequest(
+    $product1Texts,
+    'es', // Spanish
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product1['id']
+    ]
+);
+
+// Product 2: Clothing
+$product2Texts = array_merge(
+    [$product2['name']],
+    [$product2['description']],
+    $product2['specs']
+);
+$requests[] = new TranslateRequest(
+    $product2Texts,
+    'es', // Spanish
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product2['id']
+    ]
+);
+
+// Product 3: Home & Garden
+$product3Texts = array_merge(
+    [$product3['name']],
+    [$product3['description']],
+    $product3['specs']
+);
+$requests[] = new TranslateRequest(
+    $product3Texts,
+    'es', // Spanish
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product3['id']
+    ]
+);
+
+// Translate all product cards in a single API call
+$requests = $engine->translateMultiRequest($requests);
+
+// Display results
+$products = [$product1, $product2, $product3];
+foreach ($requests as $index => $request) {
+    $productNum = $index + 1;
+    $product = $products[$index];
+    
+    echo "Product $productNum (ID: {$product['id']}):\n";
+    
+    if ($request->isSuccessful()) {
+        $result = $request->getResult();
+        $translatedTexts = $result->getTexts();
+        
+        echo "  Name (EN): {$product['name']}\n";
+        echo "  Name (ES): " . ($translatedTexts[0] ?? 'N/A') . "\n";
+        
+        echo "  Description (EN): {$product['description']}\n";
+        echo "  Description (ES): " . ($translatedTexts[1] ?? 'N/A') . "\n";
+        
+        echo "  Specifications (ES):\n";
+        foreach ($product['specs'] as $specIndex => $spec) {
+            $translatedSpec = $translatedTexts[$specIndex + 2] ?? $spec;
+            echo "    - $translatedSpec\n";
+        }
+    } else {
+        $result = $request->getResult();
+        $error = $result->getError();
+        echo "  Translation failed: " . ($error ? $error->getMessage() : 'Unknown error') . "\n";
+    }
+    echo "\n";
+}
+
+// ============================================================================
+// Example 3: translateMultiRequest() - Cached translation (names only)
+// ============================================================================
+
+echo "=== Example 3: Cached Translation (Product Names Only) ===\n";
+echo "Requesting only product names with the same context - should return from cache\n\n";
+
+// Create requests for only product names with the same entity context
+$nameRequests = [];
+
+// Product 1 name only
+$nameRequests[] = new TranslateRequest(
+    [$product1['name']],
+    'es',
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product1['id']
+    ]
+);
+
+// Product 2 name only
+$nameRequests[] = new TranslateRequest(
+    [$product2['name']],
+    'es',
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product2['id']
+    ]
+);
+
+// Product 3 name only
+$nameRequests[] = new TranslateRequest(
+    [$product3['name']],
+    'es',
+    'en',
+    [
+        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
+        'entity_key' => 'product',
+        'entity_id' => (string)$product3['id']
+    ]
+);
+
+// Translate product names (should use cache from Example 2)
+$nameRequests = $engine->translateMultiRequest($nameRequests);
+
+echo "Product names retrieved (should match Example 2):\n";
+$products = [$product1, $product2, $product3];
+foreach ($nameRequests as $index => $request) {
+    $productNum = $index + 1;
+    $product = $products[$index];
+    
+    if ($request->isSuccessful()) {
+        $result = $request->getResult();
+        $translatedTexts = $result->getTexts();
+        $translatedName = $translatedTexts[0] ?? $product['name'];
+        
+        echo "  Product $productNum (ID: {$product['id']}):\n";
+        echo "    Original: {$product['name']}\n";
+        echo "    Translated: $translatedName\n";
+        
+        // Verify it matches the previous translation
+        $previousRequest = $requests[$index];
+        if ($previousRequest->isSuccessful()) {
+            $previousResult = $previousRequest->getResult();
+            $previousTexts = $previousResult->getTexts();
+            $previousName = $previousTexts[0] ?? '';
+            
+            if ($translatedName === $previousName) {
+                echo "    ✓ Cache hit - translation matches previous result\n";
+            } else {
+                echo "    ⚠ Translation differs from previous result\n";
+            }
+        }
+    } else {
+        $result = $request->getResult();
+        $error = $result->getError();
+        echo "  Product $productNum: Translation failed - " . ($error ? $error->getMessage() : 'Unknown error') . "\n";
+    }
+    echo "\n";
+}
+
+echo "Note: The translations should be identical to Example 2 because the same texts\n";
+echo "with the same context (entity_key and entity_id) are being requested again.\n";
+echo "This demonstrates how the caching system works.\n";

@@ -8,37 +8,51 @@ use BeLocal\BeLocalEngine;
 use BeLocal\BeLocalError;
 use BeLocal\Transport;
 use BeLocal\TranslateResponse;
+use BeLocal\TranslateRequest;
+use BeLocal\TranslateManyResult;
 use PHPUnit\Framework\TestCase;
 
 class BeLocalEngineTest extends TestCase
 {
     /**
-     * Test the translate method with a successful response
+     * Test the t method with a successful response
      */
-    public function testTranslateSuccess()
+    public function testTSuccess()
     {
         $transport = $this->createMock(Transport::class);
 
-        $responseData = ['text' => 'Bonjour', 'status' => 'cached'];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
-
         $transport->expects($this->once())
-            ->method('send')
-            ->with(['text' => 'Hello', 'lang' => 'fr'])
-            ->willReturn($response);
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'cached']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->translate('Hello', 'fr');
+        $result = $engine->t('Hello', 'fr', null, 'test context');
 
-        $this->assertTrue($result->isOk());
-        $this->assertEquals('Bonjour', $result->getText());
+        $this->assertEquals('Bonjour', $result);
     }
 
     /**
-     * Test the translate method with an error response
+     * Test the t method with an error response (should return original text)
      */
-    public function testTranslateError()
+    public function testTError()
     {
         $transport = $this->createMock(Transport::class);
 
@@ -46,66 +60,88 @@ class BeLocalEngineTest extends TestCase
         $response = new TranslateResponse(null, false, $error, 500, null, null);
 
         $transport->expects($this->once())
-            ->method('send')
+            ->method('sendMulti')
             ->willReturn($response);
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->translate('Hello', 'fr');
+        $result = $engine->t('Hello', 'fr', null, 'test context');
 
-        $this->assertFalse($result->isOk());
-        $this->assertSame($error, $result->getError());
+        // On error, t() returns original text
+        $this->assertEquals('Hello', $result);
     }
 
     /**
-     * Test the translate method with empty text
+     * Test the t method with empty text (should return empty string)
      */
-    public function testTranslateEmptyText()
+    public function testTEmptyText()
     {
         $transport = $this->createMock(Transport::class);
-
-        $transport->expects($this->never())
-            ->method('send');
-
-        $engine = new BeLocalEngine($transport);
-
-        $result = $engine->translate('', 'fr');
-
-        $this->assertFalse($result->isOk());
-        $this->assertEquals('', $result->getText());
-    }
-
-    /**
-     * Test the translateMany method with a successful response
-     */
-    public function testTranslateManySuccess()
-    {
-        $transport = $this->createMock(Transport::class);
-
-        $responseData = [
-            'results' => [
-                [
-                    'requestId' => '123',
-                    'data' => ['text' => 'Bonjour']
-                ],
-                [
-                    'requestId' => '456',
-                    'data' => ['text' => 'Au revoir']
-                ]
-            ]
-        ];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
 
         $transport->expects($this->once())
-            ->method('sendBatch')
-            ->willReturn($response);
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => [''], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->translateMany(['Hello', 'Goodbye'], 'fr');
+        $result = $engine->t('', 'fr', null, 'test context');
 
-        $this->assertTrue($result->isOk());
-        $this->assertCount(2, $result->getTexts());
+        $this->assertEquals('', $result);
+    }
+
+    /**
+     * Test the tMany method with a successful response
+     */
+    public function testTManySuccess()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour', 'Au revoir'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'test context');
+
+        $this->assertIsArray($result);
+        $this->assertCount(2, $result);
+        $this->assertEquals('Bonjour', $result[0]);
+        $this->assertEquals('Au revoir', $result[1]);
     }
 
     /**
@@ -115,16 +151,30 @@ class BeLocalEngineTest extends TestCase
     {
         $transport = $this->createMock(Transport::class);
 
-        $responseData = ['text' => 'Bonjour', 'status' => 'translated'];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
-
         $transport->expects($this->once())
-            ->method('send')
-            ->willReturn($response);
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->t('Hello', 'fr');
+        $result = $engine->t('Hello', 'fr', null, 'test context');
 
         $this->assertEquals('Bonjour', $result);
     }
@@ -136,27 +186,30 @@ class BeLocalEngineTest extends TestCase
     {
         $transport = $this->createMock(Transport::class);
 
-        // Create a mock response that will return translated texts in the same order
         $transport->expects($this->once())
-            ->method('sendBatch')
-            ->willReturnCallback(fn($data) => new TranslateResponse(
-                ['results' => array_map(fn($item) => [
-                    'requestId' => $item['requestId'],
-                    'data' => [
-                        'text' => ($item['payload']['text'] === 'Hello') ? 'Bonjour' : 'Au revoir',
-                        'status' => 'translated'
-                    ]
-                ], $data['batch'])],
-                true,
-                null,
-                200,
-                null,
-                null
-            ));
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour', 'Au revoir'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr');
+        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'test context');
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -175,12 +228,12 @@ class BeLocalEngineTest extends TestCase
         $response = new TranslateResponse(null, false, $error, 500, null, null);
 
         $transport->expects($this->once())
-            ->method('sendBatch')
+            ->method('sendMulti')
             ->willReturn($response);
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr');
+        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'test context');
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -189,199 +242,78 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
-     * Test the translate method with status = error
+     * Test the t method with status = error (should return original text)
      */
-    public function testTranslateStatusError()
+    public function testTStatusError()
     {
         $transport = $this->createMock(Transport::class);
-
-        $responseData = ['text' => 'Some text', 'status' => 'error'];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
 
         $transport->expects($this->once())
-            ->method('send')
-            ->willReturn($response);
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Some text'], 'status' => 'error']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $result = $engine->translate('Hello', 'fr');
+        $result = $engine->t('Hello', 'fr', null, 'test context');
 
-        $this->assertFalse($result->isOk());
-        $this->assertNull($result->getText());
+        // On error status, t() returns original text
+        $this->assertEquals('Hello', $result);
     }
 
     /**
-     * Test the translateMany method with status = error
+     * Test the tMany method with status = error (should return original texts)
      */
-    public function testTranslateManyStatusError()
+    public function testTManyStatusError()
     {
         $transport = $this->createMock(Transport::class);
-
-        // Create a mock response with status = error for all items
-        $transport->expects($this->once())
-            ->method('sendBatch')
-            ->willReturnCallback(fn($data) => new TranslateResponse(
-                ['results' => array_map(fn($item) => [
-                    'requestId' => $item['requestId'],
-                    'data' => ['text' => 'Some text', 'status' => 'error']
-                ], $data['batch'])],
-                true,
-                null,
-                200,
-                null,
-                null
-            ));
-
-        $engine = new BeLocalEngine($transport);
-
-        $result = $engine->translateMany(['Hello', 'Goodbye'], 'fr');
-
-        $this->assertFalse($result->isOk());
-        $this->assertCount(2, $result->getTexts());
-        $this->assertNull($result->getTexts()[0]);
-        $this->assertNull($result->getTexts()[1]);
-    }
-
-    /**
-     * Test that translateMany throws InvalidArgumentException when array contains non-string elements
-     */
-    public function testTranslateManyWithNonStringInArray()
-    {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Expected array<string>, but element at index');
-
-        $engine->translateMany(['Hello', 123, 'World'], 'fr');
-    }
-
-    /**
-     * Test that translateMany throws InvalidArgumentException when array contains null
-     */
-    public function testTranslateManyWithNullInArray()
-    {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Expected array<string>, but element at index');
-
-        $engine->translateMany(['Hello', null, 'World'], 'fr');
-    }
-
-    /**
-     * Test that translateMany throws InvalidArgumentException when array contains array element
-     */
-    public function testTranslateManyWithArrayInArray()
-    {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Expected array<string>, but element at index');
-
-        $engine->translateMany(['Hello', ['nested'], 'World'], 'fr');
-    }
-
-    /**
-     * Test that translateMany throws InvalidArgumentException when context has non-string keys
-     */
-    public function testTranslateManyWithNonStringKeyInContext()
-    {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Context keys and values must be strings');
-
-        $context = [0 => 'value', 'key' => 'value2'];
-        $engine->translateMany(['Hello', 'World'], 'fr', '', $context);
-    }
-
-    /**
-     * Test that translate throws InvalidArgumentException when context has non-string keys
-     */
-    public function testTranslateWithNonStringKeyInContext()
-    {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Context keys and values must be strings');
-
-        $context = [123 => 'value', 'key' => 'value2'];
-        $engine->translate('Hello', 'fr', '', $context);
-    }
-
-    /**
-     * Test that translateMany works correctly with valid context
-     */
-    public function testTranslateManyWithValidContext()
-    {
-        $transport = $this->createMock(Transport::class);
-
-        $responseData = [
-            'results' => [
-                [
-                    'requestId' => '123',
-                    'data' => ['text' => 'Bonjour', 'status' => 'translated']
-                ]
-            ]
-        ];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
 
         $transport->expects($this->once())
-            ->method('sendBatch')
-            ->willReturn($response);
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Some text', 'Some text'], 'status' => 'error']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
 
         $engine = new BeLocalEngine($transport);
 
-        $context = ['user_ctx' => 'test', 'cache_type' => 'editable'];
-        $result = $engine->translateMany(['Hello'], 'fr', '', $context);
+        $result = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'test context');
 
-        $this->assertTrue($result->isOk());
-    }
-
-    /**
-     * Test that translate works correctly with valid context
-     */
-    public function testTranslateWithValidContext()
-    {
-        $transport = $this->createMock(Transport::class);
-
-        $responseData = ['text' => 'Bonjour', 'status' => 'translated'];
-        $response = new TranslateResponse($responseData, true, null, 200, null, null);
-
-        $transport->expects($this->once())
-            ->method('send')
-            ->willReturn($response);
-
-        $engine = new BeLocalEngine($transport);
-
-        $context = ['user_ctx' => 'test', 'cache_type' => 'editable'];
-        $result = $engine->translate('Hello', 'fr', '', $context);
-
-        $this->assertTrue($result->isOk());
-        $this->assertEquals('Bonjour', $result->getText());
-    }
-
-    /**
-     * Test that translateMany works correctly with empty array (validation passes, early return)
-     */
-    public function testTranslateManyWithEmptyArray()
-    {
-        $transport = $this->createMock(Transport::class);
-
-        $transport->expects($this->never())
-            ->method('sendBatch');
-
-        $engine = new BeLocalEngine($transport);
-
-        $result = $engine->translateMany([], 'fr');
-
-        $this->assertFalse($result->isOk());
-        $this->assertEquals([], $result->getTexts());
+        // On error status, tMany() returns original texts
+        $this->assertIsArray($result);
+        $this->assertCount(2, $result);
+        $this->assertEquals('Hello', $result[0]);
+        $this->assertEquals('Goodbye', $result[1]);
     }
 
     /**
@@ -395,7 +327,175 @@ class BeLocalEngineTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Expected array<string>, but element at index');
 
-        $engine->tMany(['Hello', 456, 'World'], 'fr');
+        $engine->tMany(['Hello', 123, 'World'], 'fr', null, 'test context');
+    }
+
+    /**
+     * Test that tMany throws InvalidArgumentException when array contains null
+     */
+    public function testTManyWithNullInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->tMany(['Hello', null, 'World'], 'fr', null, 'test context');
+    }
+
+    /**
+     * Test that tMany throws InvalidArgumentException when array contains array element
+     */
+    public function testTManyWithArrayInArray()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Expected array<string>, but element at index');
+
+        $engine->tMany(['Hello', ['nested'], 'World'], 'fr', null, 'test context');
+    }
+
+    /**
+     * Test that translateRequest throws InvalidArgumentException when context has non-string keys
+     */
+    public function testTranslateRequestWithNonStringKeyInContext()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Context keys and values must be strings');
+
+        $context = [0 => 'value', 'key' => 'value2'];
+        $request = new TranslateRequest(['Hello', 'World'], 'fr', null, $context);
+        $engine->translateRequest($request);
+    }
+
+    /**
+     * Test that translateRequest throws InvalidArgumentException when context has non-string keys
+     */
+    public function testTranslateRequestWithNonStringKeyInContextSingle()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Context keys and values must be strings');
+
+        $context = [123 => 'value', 'key' => 'value2'];
+        $request = new TranslateRequest(['Hello'], 'fr', null, $context);
+        $engine->translateRequest($request);
+    }
+
+    /**
+     * Test that tMany works correctly with valid context
+     */
+    public function testTManyWithValidContext()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        $result = $engine->tMany(['Hello'], 'fr', null, 'test context');
+
+        $this->assertIsArray($result);
+        $this->assertCount(1, $result);
+        $this->assertEquals('Bonjour', $result[0]);
+    }
+
+    /**
+     * Test that t works correctly with valid context
+     */
+    public function testTWithValidContext()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        $result = $engine->t('Hello', 'fr', null, 'test context');
+
+        $this->assertEquals('Bonjour', $result);
+    }
+
+    /**
+     * Test that tMany works correctly with empty array (should return empty array)
+     */
+    public function testTManyWithEmptyArray()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $requestId = $data['requests'][0]['requestId'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'requestId' => $requestId,
+                                'data' => ['texts' => [], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        $result = $engine->tMany([], 'fr', null, 'test context');
+
+        $this->assertIsArray($result);
+        $this->assertEquals([], $result);
     }
 
     /**
@@ -409,7 +509,7 @@ class BeLocalEngineTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Expected array<string>, but element at index');
 
-        $engine->tManyEditable(['Hello', true, 'World'], 'fr');
+        $engine->tManyEditable(['Hello', true, 'World'], 'fr', null, 'test context');
     }
 
     /**
@@ -418,20 +518,16 @@ class BeLocalEngineTest extends TestCase
      */
     public function testBuildRequestIdDeterministic()
     {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $reflection = new \ReflectionClass($engine);
-        $method = $reflection->getMethod('buildRequestId');
-        $method->setAccessible(true);
-
         $text = 'Hello World';
         $lang = 'fr';
         $context1 = ['user_ctx' => 'test', 'cache_type' => 'editable'];
         $context2 = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Same data, different order
 
-        $requestId1 = $method->invoke($engine, $text, $lang, $context1);
-        $requestId2 = $method->invoke($engine, $text, $lang, $context2);
+        $request1 = new TranslateRequest([$text], $lang, null, $context1);
+        $request2 = new TranslateRequest([$text], $lang, null, $context2);
+
+        $requestId1 = $request1->getRequestId();
+        $requestId2 = $request2->getRequestId();
 
         $this->assertEquals($requestId1, $requestId2, 'buildRequestId should return the same result for identical inputs regardless of key order');
     }
@@ -442,33 +538,22 @@ class BeLocalEngineTest extends TestCase
      */
     public function testBuildRequestIdDifferentForDifferentInputs()
     {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $reflection = new \ReflectionClass($engine);
-        $method = $reflection->getMethod('buildRequestId');
-        $method->setAccessible(true);
-
         $text1 = 'Hello';
         $text2 = 'World';
         $lang = 'fr';
         $context = ['user_ctx' => 'test'];
 
-        $requestId1 = $method->invoke($engine, $text1, $lang, $context);
-        $requestId2 = $method->invoke($engine, $text2, $lang, $context);
+        $request1 = new TranslateRequest([$text1], $lang, null, $context);
+        $request2 = new TranslateRequest([$text2], $lang, null, $context);
+
+        $requestId1 = $request1->getRequestId();
+        $requestId2 = $request2->getRequestId();
 
         $this->assertNotEquals($requestId1, $requestId2, 'buildRequestId should return different results for different texts');
     }
 
     public function testBuildRequestIdDoesNotModifyContext()
     {
-        $transport = $this->createMock(Transport::class);
-        $engine = new BeLocalEngine($transport);
-
-        $reflection = new \ReflectionClass($engine);
-        $method = $reflection->getMethod('buildRequestId');
-        $method->setAccessible(true);
-
         $texts = ['Hello', 'World', 'Test'];
         $lang = 'fr';
         $context = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Unsorted order
@@ -479,7 +564,8 @@ class BeLocalEngineTest extends TestCase
 
         // Simulate calling buildRequestId multiple times in a loop (like in translateMany)
         foreach ($texts as $text) {
-            $requestId = $method->invoke($engine, $text, $lang, $context);
+            $request = new TranslateRequest([$text], $lang, null, $context);
+            $requestId = $request->getRequestId();
             $requestIds[] = $requestId;
             
             // Verify context array keys order is unchanged after each call
@@ -504,14 +590,14 @@ class BeLocalEngineTest extends TestCase
         $capturedRequests = [];
 
         $transport->expects($this->exactly(2))
-            ->method('sendBatch')
+            ->method('sendMulti')
             ->willReturnCallback(function($data) use (&$capturedRequests) {
-                $capturedRequests[] = $data['batch'];
+                $capturedRequests[] = $data['requests'];
                 return new TranslateResponse(
                     ['results' => array_map(fn($item) => [
                         'requestId' => $item['requestId'],
-                        'data' => ['text' => 'Translated', 'status' => 'translated']
-                    ], $data['batch'])],
+                        'data' => ['texts' => ['Translated'], 'status' => 'translated']
+                    ], $data['requests'])],
                     true,
                     null,
                     200,
@@ -521,10 +607,10 @@ class BeLocalEngineTest extends TestCase
             });
 
         // First call
-        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', '', 'product');
+        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
         
         // Second call with identical parameters
-        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', '', 'product');
+        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
 
         // Verify that both calls generated the same requestId
         $this->assertCount(2, $capturedRequests);

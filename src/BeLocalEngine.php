@@ -40,229 +40,108 @@ class BeLocalEngine
     }
 
     /**
-     * @param array<string> $texts Array of strings to translate
-     * @param string $lang Target language code
-     * @param string $sourceLang Source language code (empty for auto-detection)
-     * @param array<string, mixed> $context Context parameters (key-value pairs)
-     * @return TranslateManyResult
-     * @throws \InvalidArgumentException If texts array contains non-string elements or context has non-string keys
-     */
-    public function translateMany(array $texts, string $lang, string $sourceLang = '', array $context = []): TranslateManyResult
-    {
-        $this->validateTextsArray($texts);
-        $this->validateContextArray($context);
-
-        if (count($texts) === 0 || $lang === '') {
-            return new TranslateManyResult($texts, false);
-        }
-
-        $requestIds = [];
-        $batchRequestData = [];
-        foreach ($texts as $text) {
-            $requestId = $this->buildRequestId($text, $lang, $context);
-            $requestIds[] = $requestId;
-
-            if ($text === '') {
-                continue;
-            }
-
-            $payload = [
-                'text' => $text,
-                'lang' => $lang,
-            ];
-
-            if (!empty($sourceLang)) {
-                $payload['source_lang'] = $sourceLang;
-            }
-
-            if (!empty($context)) {
-                $payload['ctx'] = $context;
-            }
-
-            $batchRequestData[] = [
-                'requestId' => $requestId,
-                'payload' => $payload,
-            ];
-        }
-
-        if (count($batchRequestData) === 0) {
-            return new TranslateManyResult($texts, false);
-        }
-
-        $response = $this->transport->sendBatch(['batch' => $batchRequestData]);
-
-        return TranslateManyResultFactory::fromResponseAndRequestIds($requestIds, $response);
-    }
-
-    /**
-     * @param string $text Text to translate
-     * @param string $lang Target language code
-     * @param string $sourceLang Source language code (empty for auto-detection)
-     * @param array<string, mixed> $context Context parameters (key-value pairs)
-     * @return TranslateResult
-     * @throws \InvalidArgumentException If context has non-string keys
-     */
-    public function translate(string $text, string $lang, string $sourceLang = '', array $context = []): TranslateResult
-    {
-        $this->validateContextArray($context);
-
-        if ($text === '' || $lang === '') {
-            return new TranslateResult($text, false);
-        }
-
-        $data = ['text' => $text, 'lang' => $lang];
-
-        if (!empty($sourceLang)) {
-            $data['source_lang'] = $sourceLang;
-        }
-
-        if (!empty($context)) {
-            $data['ctx'] = $context;
-        }
-
-        $response = $this->transport->send($data);
-
-        return TranslateResult::fromResponse($response);
-    }
-
-    /**
-     * Sugar for translate method
+     * Quick translation method for a single text
+     * 
+     * This is a convenience method that wraps translateRequest() and returns the translated text directly,
+     * or the original text if translation fails.
+     * 
+     * @param string $text The text to translate
+     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
+     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
+     * @param string $userContext User context string for translation context
+     * @return string Translated text, or original text if translation fails
      *
-     * @param string $text
-     * @param string $lang
-     * @param string $sourceLang
-     * @param string $context
-     * @return string
      */
-    public function t(string $text, string $lang, string $sourceLang = '', string $context = ''): string
+    public function t(string $text, string $lang, ?string $sourceLang, string $userContext): string
     {
-        $result = $this->translate($text, $lang, $sourceLang, ['user_ctx' => $context]);
+        $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext]))->getResult();
 
-        return $this->getSafeTranslatedTextFromResult($text, $result);
+        $texts = $result->getTexts();
+        return ($result->isOk() && $texts !== null && isset($texts[0])) ? $texts[0] : $text;
     }
 
     /**
-     * Sugar for translate method with cache type = editable
+     * Quick translation method for a single text with editable cache type
+     * 
+     * This is a convenience method similar to t(), but uses editable cache type,
+     * which allows translations to be edited later in the cache.
+     * 
+     * @param string $text The text to translate
+     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
+     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
+     * @param string $userContext User context string for translation context
+     * @return string Translated text, or original text if translation fails
      *
-     * @param string $text
-     * @param string $lang
-     * @param string $sourceLang
-     * @param string $context
-     * @return string
      */
-    public function tEditable(string $text, string $lang, string $sourceLang = '', string $context = ''): string
+    public function tEditable(string $text, string $lang, ?string $sourceLang, string $userContext): string
     {
-        $result = $this->translate($text, $lang, $sourceLang, ['user_ctx' => $context, 'cache_type' => 'editable']);
+        $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, [
+            TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
+            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_EDITABLE,
+        ]))->getResult();
 
-        return $this->getSafeTranslatedTextFromResult($text, $result);
-    }
-
-    private function getSafeTranslatedTextFromResult(string $text, TranslateResult $result): string
-    {
-        if ($result->isOk() && $result->getText()) {
-            return $result->getText();
-        }
-
-        return $text;
+        $texts = $result->getTexts();
+        return ($result->isOk() && $texts !== null && isset($texts[0])) ? $texts[0] : $text;
     }
 
     /**
-     * Sugar for translateMany method
+     * Quick translation method for multiple texts
+     * 
+     * This is a convenience method that wraps translateRequest() and returns an array of translated texts,
+     * or the original texts array if translation fails.
+     * 
+     * @param array<string> $texts Array of texts to translate
+     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
+     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
+     * @param string $userContext User context string for translation context
+     * @return array<string> Array of translated texts, or original texts array if translation fails
      *
-     * @param array<string> $texts Array of strings to translate
-     * @param string $lang Target language code
-     * @param string $sourceLang Source language code (empty for auto-detection)
-     * @param string $context Optional user context string
-     * @return array<string> Translated texts (originals preserved on error)
-     * @throws \InvalidArgumentException If texts array contains non-string elements
      */
-    public function tMany(array $texts, string $lang, string $sourceLang = '', string $context = ''): array
+    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext): array
     {
-        $result = $this->translateMany($texts, $lang, $sourceLang, ['user_ctx' => $context]);
+        $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext]))->getResult();
 
-        return $this->getSafeTranslatedTextsFromResult($texts, $result);
+        $translatedTexts = $result->getTexts();
+        return ($result->isOk() && $translatedTexts !== null) ? $translatedTexts : $texts;
     }
 
     /**
-     * Sugar for translateMany method with cache type = editable
+     * Quick translation method for multiple texts with editable cache type
+     * 
+     * This is a convenience method similar to tMany(), but uses editable cache type,
+     * which allows translations to be edited later in the cache.
+     * 
+     * @param array<string> $texts Array of texts to translate
+     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
+     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
+     * @param string $userContext User context string for translation context
+     * @return array<string> Array of translated texts, or original texts array if translation fails
      *
-     * @param array<string> $texts Array of strings to translate
-     * @param string $lang Target language code
-     * @param string $sourceLang Source language code (empty for auto-detection)
-     * @param string $context Optional user context string
-     * @return array<string> Translated texts (originals preserved on error)
-     * @throws \InvalidArgumentException If texts array contains non-string elements
      */
-    public function tManyEditable(array $texts, string $lang, string $sourceLang = '', string $context = ''): array
+    public function tManyEditable(array $texts, string $lang, ?string $sourceLang, string $userContext): array
     {
-        $result = $this->translateMany($texts, $lang, $sourceLang, ['user_ctx' => $context, 'cache_type' => 'editable']);
+        $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, [
+            TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
+            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_EDITABLE,
+        ]))->getResult();
 
-        return $this->getSafeTranslatedTextsFromResult($texts, $result);
-    }
-
-    private function getSafeTranslatedTextsFromResult(array $texts, TranslateManyResult $result): array
-    {
-        if ($result->isOk() && $result->getTexts()) {
-            $translatedTexts = $result->getTexts();
-
-            foreach ($texts as $index => $originalText) {
-                if (!array_key_exists($index, $translatedTexts) || $translatedTexts[$index] === null) {
-                    $translatedTexts[$index] = $originalText;
-                }
-            }
-            return $translatedTexts;
-        }
-
-        return $texts;
+        $translatedTexts = $result->getTexts();
+        return ($result->isOk() && $translatedTexts !== null) ? $translatedTexts : $texts;
     }
 
     /**
-     * Validates that array contains only string elements
+     * Translate a single TranslateRequest object (works like translateMultiRequest for one entity)
      *
-     * @param array $texts
-     * @throws \InvalidArgumentException
+     * @param TranslateRequest $request TranslateRequest object to translate
+     * @return TranslateRequest The same TranslateRequest object with filled result property
      */
-    private function validateTextsArray(array $texts)
+    public function translateRequest(TranslateRequest $request): TranslateRequest
     {
-        foreach ($texts as $index => $text) {
-            if (!is_string($text)) {
-                throw new \InvalidArgumentException(
-                    sprintf('Expected array<string>, but element at index %d is %s', $index, gettype($text))
-                );
-            }
-        }
+        $results = $this->translateMultiRequest([$request]);
+
+        return $results[0];
     }
 
-    /**
-     * Validates that context array has string keys
-     *
-     * @param array $context
-     * @throws \InvalidArgumentException
-     */
-    private function validateContextArray(array $context)
-    {
-        foreach ($context as $key => $value) {
-            if (!is_string($key) || !is_string($value)) {
-                throw new \InvalidArgumentException(
-                    sprintf('Context keys and values must be strings, but key "%s" is %s and value "%s" is %s', $key, gettype($key), $value, gettype($value))
-                );
-            }
-        }
-    }
-
-    private function buildRequestId(string $text, string $lang, array $context): string
-    {
-        if (!empty($context)) {
-            $context = array_merge([], $context); // Create a copy compatible with PHP 7.4
-            ksort($context);
-        }
-        $json = json_encode([$text, $lang, $context], JSON_UNESCAPED_UNICODE);
-        if ($json === false) {
-            // Fallback to simple concatenation if json_encode fails
-            return md5($text . $lang . serialize($context));
-        }
-        return md5($json);
-    }
 
     /**
      * Translate multiple TranslateRequest objects in a single API call
@@ -286,25 +165,20 @@ class BeLocalEngine
             }
         }
 
-        // Generate requestId for each request and build request body
         $requestBody = ['requests' => []];
         foreach ($requests as $request) {
             $requestBody['requests'][] = $request->toRequestArray();
         }
 
-        // Send request to API
         $response = $this->transport->sendMulti($requestBody);
 
-        // Parse response and map results back to TranslateRequest objects
         $resultMap = TranslateManyResultFactory::fromMultiResponse($response);
 
-        // Set result on each TranslateRequest
         foreach ($requests as $request) {
             $requestId = $request->getRequestId();
             if (isset($resultMap[$requestId])) {
                 $request->setResult($resultMap[$requestId]);
             } else {
-                // If no result found, create an error result
                 $error = $response->getError() ?? new BeLocalError(BeLocalErrorCode::UNCAUGHT, 'No result found for requestId: ' . $requestId);
                 $request->setResult(new TranslateManyResult(
                     null,

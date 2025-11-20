@@ -6,6 +6,14 @@ namespace BeLocal;
 
 final class TranslateRequest
 {
+    public const CTX_KEY_USER_CONTEXT = 'user_ctx';
+
+    public const USER_CONTEXT_TYPE_PRODUCT = 'product';
+
+    public const CTX_KEY_CACHE_TYPE = 'cache_type';
+
+    public const CACHE_TYPE_EDITABLE = 'editable';
+
     /** @var array<string> */
     private array $texts;
 

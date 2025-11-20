@@ -3,7 +3,8 @@
 /**
  * Basic Usage Examples for BeLocal PHP SDK
  * 
- * This file demonstrates how to use all methods of BeLocalEngine
+ * This file demonstrates how to use sugar methods (t, tMany, tEditable, tManyEditable)
+ * for quick and easy translations in real-world scenarios.
  * 
  * Usage: php basic_usage.php <api-key>
  */
@@ -11,7 +12,6 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use BeLocal\BeLocalEngine;
-use BeLocal\TranslateRequest;
 
 // Get API key from command line argument or environment variable
 $apiKey = null;
@@ -28,262 +28,112 @@ if (empty($apiKey)) {
 }
 
 // ============================================================================
-// 1. Creating BeLocalEngine instance
+// Creating BeLocalEngine instance
 // ============================================================================
 
-// Method 1: Using factory method (recommended)
+// Using factory method (recommended)
 $engine = BeLocalEngine::withApiKey($apiKey);
 
-// Method 2: Using constructor with custom timeout
-$engine = BeLocalEngine::withApiKey($apiKey, 60); // 60 seconds timeout
-
 // ============================================================================
-// 2. translate() - Translate a single text
+// Example 1: tManyEditable() - Translation of store categories list
 // ============================================================================
 
-echo "=== translate() method ===\n";
+echo "=== Example 1: Translating Store Categories ===\n";
+echo "Translating store categories from English to Russian\n\n";
 
-// Basic translation
-$result = $engine->translate('Hello, world!', 'es');
-if ($result->isOk()) {
-    echo "Translated: " . $result->getText() . "\n";
-} else {
-    echo "Error: " . ($result->getError() ? $result->getError()->getMessage() : 'Unknown error') . "\n";
-}
-
-// Translation with source language
-$result = $engine->translate('Hello, world!', 'es', 'en');
-if ($result->isOk()) {
-    echo "Translated (en->es): " . $result->getText() . "\n";
-}
-
-// Translation with context
-$result = $engine->translate(
-    'Product name',
-    'es',
-    'en',
-    ['entity_key' => 'product', 'entity_id' => '123']
-);
-if ($result->isOk()) {
-    echo "Translated with context: " . $result->getText() . "\n";
-}
-
-echo "\n";
-
-// ============================================================================
-// 3. translateMany() - Translate multiple texts
-// ============================================================================
-
-echo "=== translateMany() method ===\n";
-
-$texts = ['Hello', 'Goodbye', 'Thank you'];
-$result = $engine->translateMany($texts, 'fr');
-
-if ($result->isOk()) {
-    $translatedTexts = $result->getTexts();
-    foreach ($translatedTexts as $index => $translated) {
-        echo "Original: {$texts[$index]} -> Translated: " . ($translated ?? 'N/A') . "\n";
-    }
-} else {
-    echo "Error: " . ($result->getError() ? $result->getError()->getMessage() : 'Unknown error') . "\n";
-}
-
-// With source language and context
-$result = $engine->translateMany(
-    ['Hello', 'Goodbye'],
-    'de',
-    'en',
-    ['entity_key' => 'product', 'entity_id' => '456']
-);
-
-if ($result->isOk()) {
-    $translatedTexts = $result->getTexts();
-    echo "Translated texts with context: " . implode(', ', array_filter($translatedTexts)) . "\n";
-}
-
-echo "\n";
-
-// ============================================================================
-// 4. translateMultiRequest() - Translate multiple TranslateRequest objects
-// ============================================================================
-
-echo "=== translateMultiRequest() method ===\n";
-
-// Create multiple TranslateRequest objects
-$requests = [
-    new TranslateRequest(
-        ['Hello world', 'How are you?'],
-        'es',
-        'en',
-        ['entity_key' => 'product', 'entity_id' => '123']
-    ),
-    new TranslateRequest(
-        ['Good morning', 'Thank you'],
-        'fr',
-        null, // auto-detect source language
-        ['entity_key' => 'product', 'entity_id' => '456']
-    ),
-    new TranslateRequest(
-        ['Welcome'],
-        'de',
-        'en',
-        [] // empty context
-    ),
+// Store categories that might be edited later (e.g., admin can change category names)
+$storeCategories = [
+    'Electronics',
+    'Clothing',
+    'Home & Garden',
+    'Sports & Outdoors',
+    'Books & Media'
 ];
 
-// Translate all requests in a single API call
-$requests = $engine->translateMultiRequest($requests);
+// Translate categories with editable cache (allows future edits)
+// User context explains that these are e-commerce store navigation categories
+$translatedCategories = $engine->tManyEditable($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header');
 
-// Check results
-foreach ($requests as $index => $request) {
-    echo "Request " . ($index + 1) . ":\n";
-    echo "  Texts: " . implode(', ', $request->getTexts()) . "\n";
-    echo "  Lang: " . $request->getLang() . "\n";
-    echo "  RequestId: " . $request->getRequestId() . "\n";
-    
-    if ($request->isSuccessful()) {
-        $result = $request->getResult();
-        $translatedTexts = $result->getTexts();
-        echo "  Translated: " . implode(', ', array_filter($translatedTexts ?? [])) . "\n";
-    } else {
-        $result = $request->getResult();
-        echo "  Error: " . ($result && $result->getError() ? $result->getError()->getMessage() : 'Unknown error') . "\n";
-    }
-    echo "\n";
+echo "Original categories (EN):\n";
+foreach ($storeCategories as $index => $category) {
+    echo "  " . ($index + 1) . ". $category\n";
 }
 
-// ============================================================================
-// 5. t() - Sugar method for quick translation (returns string directly)
-// ============================================================================
-
-echo "=== t() method (sugar for translate) ===\n";
-
-// Simple translation - returns translated text or original on error
-$translated = $engine->t('Hello, world!', 'es');
-echo "Translated: $translated\n";
-
-// With source language
-$translated = $engine->t('Hello, world!', 'fr', 'en');
-echo "Translated (en->fr): $translated\n";
-
-// With context
-$translated = $engine->t('Product name', 'de', 'en', 'product-context');
-echo "Translated with context: $translated\n";
-
-echo "\n";
-
-// ============================================================================
-// 6. tEditable() - Sugar method with editable cache type
-// ============================================================================
-
-echo "=== tEditable() method ===\n";
-
-// Translation with editable cache type
-$translated = $engine->tEditable('Hello, world!', 'es');
-echo "Translated (editable): $translated\n";
-
-// With context
-$translated = $engine->tEditable('Product description', 'fr', 'en', 'product-123');
-echo "Translated (editable with context): $translated\n";
-
-echo "\n";
-
-// ============================================================================
-// 7. tMany() - Sugar method for translating multiple texts
-// ============================================================================
-
-echo "=== tMany() method (sugar for translateMany) ===\n";
-
-$texts = ['Hello', 'Goodbye', 'Thank you'];
-$translatedTexts = $engine->tMany($texts, 'fr');
-
-// Returns array of translated texts (originals preserved on error)
-foreach ($translatedTexts as $index => $translated) {
-    echo "{$texts[$index]} -> $translated\n";
-}
-
-// With source language and context
-$translatedTexts = $engine->tMany(['Hello', 'Goodbye'], 'de', 'en', 'product-context');
-echo "Translated with context: " . implode(', ', $translatedTexts) . "\n";
-
-echo "\n";
-
-// ============================================================================
-// 8. tManyEditable() - Sugar method with editable cache type
-// ============================================================================
-
-echo "=== tManyEditable() method ===\n";
-
-$texts = ['Hello', 'Goodbye', 'Thank you'];
-$translatedTexts = $engine->tManyEditable($texts, 'es');
-
-foreach ($translatedTexts as $index => $translated) {
-    echo "{$texts[$index]} -> $translated\n";
-}
-
-// With context
-$translatedTexts = $engine->tManyEditable(['Welcome', 'Goodbye'], 'fr', 'en', 'product-456');
-echo "Translated (editable with context): " . implode(', ', $translatedTexts) . "\n";
-
-echo "\n";
-
-// ============================================================================
-// 9. Error Handling Examples
-// ============================================================================
-
-echo "=== Error Handling ===\n";
-
-// Empty text
-$result = $engine->translate('', 'es');
-if (!$result->isOk()) {
-    echo "Empty text handled correctly\n";
-}
-
-// Empty language
-$result = $engine->translate('Hello', '');
-if (!$result->isOk()) {
-    echo "Empty language handled correctly\n";
-}
-
-// Empty texts array
-$result = $engine->translateMany([], 'es');
-if (!$result->isOk()) {
-    echo "Empty texts array handled correctly\n";
-}
-
-// Invalid context (non-string keys) - will throw InvalidArgumentException
-try {
-    $engine->translate('Hello', 'es', '', [123 => 'value']);
-    echo "Should not reach here\n";
-} catch (\InvalidArgumentException $e) {
-    echo "Invalid context caught: " . $e->getMessage() . "\n";
+echo "\nTranslated categories (RU):\n";
+foreach ($translatedCategories as $index => $translated) {
+    echo "  " . ($index + 1) . ". $translated\n";
 }
 
 echo "\n";
 
 // ============================================================================
-// 10. Working with TranslateRequest
+// Example 2: t() - Translation of search query for product search
 // ============================================================================
 
-echo "=== Working with TranslateRequest ===\n";
+echo "=== Example 2: Translating Search Query ===\n";
+echo "Translating user search query for product search on another language\n\n";
 
-$request = new TranslateRequest(
-    ['Hello world', 'How are you?'],
-    'es',
-    'en',
-    ['entity_key' => 'product', 'entity_id' => '123']
-);
+// User enters search query in their language
+$userSearchQuery = 'wireless headphones';
 
-echo "Request details:\n";
-echo "  Texts: " . implode(', ', $request->getTexts()) . "\n";
-echo "  Lang: " . $request->getLang() . "\n";
-echo "  Source Lang: " . ($request->getSourceLang() ?? 'auto') . "\n";
-echo "  Context: " . json_encode($request->getContext()) . "\n";
-echo "  RequestId: " . $request->getRequestId() . "\n";
+// Translate search query to Spanish for searching products in Spanish catalog
+// User context explains that this is a user-entered search query for product search
+$translatedQuery = $engine->t($userSearchQuery, 'es', 'en', 'User search query entered in product search box on e-commerce website');
 
-// Convert to request array format
-$requestArray = $request->toRequestArray();
-echo "  Request Array: " . json_encode($requestArray, JSON_PRETTY_PRINT) . "\n";
+echo "Original search query (EN): $userSearchQuery\n";
+echo "Translated query (ES): $translatedQuery\n";
+echo "\nNow you can use '$translatedQuery' to search products in Spanish catalog\n";
 
 echo "\n";
 
+// ============================================================================
+// Example 3: tMany() - Translation of product reviews
+// ============================================================================
+
+echo "=== Example 3: Translating Product Reviews ===\n";
+echo "Translating customer reviews on the website\n\n";
+
+// Customer reviews that need to be displayed in different languages
+$reviews = [
+    'Great product! Very satisfied with the quality.',
+    'Fast shipping and excellent customer service.',
+    'The product exceeded my expectations. Highly recommend!',
+    'Good value for money. Will buy again.',
+    'Not what I expected. Returned the item.'
+];
+
+// Translate reviews to French
+// User context explains that these are customer product reviews displayed on product pages
+$translatedReviews = $engine->tMany($reviews, 'fr', 'en', 'Customer product reviews displayed on product detail page');
+
+echo "Original reviews (EN):\n";
+foreach ($reviews as $index => $review) {
+    echo "  Review " . ($index + 1) . ": $review\n";
+}
+
+echo "\nTranslated reviews (FR):\n";
+foreach ($translatedReviews as $index => $translated) {
+    echo "  Review " . ($index + 1) . ": $translated\n";
+}
+
+echo "\n";
+
+// ============================================================================
+// Example 4: tEditable() - Translation of country name
+// ============================================================================
+
+echo "=== Example 4: Translating Country Name ===\n";
+echo "Translating country name (editable cache allows corrections)\n\n";
+
+// Country name that might need manual correction later
+$countryName = 'United States';
+
+// Translate country name to German with editable cache
+// User context explains that this is a country name displayed in shipping address form
+$translatedCountry = $engine->tEditable($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout');
+
+echo "Original country name (EN): $countryName\n";
+echo "Translated country name (DE): $translatedCountry\n";
+echo "\nNote: Using editable cache allows you to manually correct the translation if needed\n";
+
+echo "\n";
