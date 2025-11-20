@@ -7,22 +7,22 @@ namespace BeLocal;
 class TranslateManyResult
 {
     /** @var array<string>|null */
-    private $texts;
+    private ?array $texts;
 
     /** @var bool */
-    private $ok;
+    private bool $ok;
 
     /** @var BeLocalError|null */
-    private $error;
+    private ?BeLocalError $error;
 
     /** @var int|null */
-    private $httpCode;
+    private ?int $httpCode;
 
     /** @var int|null */
-    private $curlErrno;
+    private ?int $curlErrno;
 
     /** @var string|null */
-    private $raw;
+    private ?string $raw;
 
     /**
      * @param array<string>|null $texts
@@ -32,7 +32,7 @@ class TranslateManyResult
      * @param int|null        $curlErrno
      * @param string|null     $raw
      */
-    public function __construct($texts, bool $ok, BeLocalError $error = null, $httpCode = null, $curlErrno = null, $raw = null)
+    public function __construct($texts, bool $ok, ?BeLocalError $error = null, $httpCode = null, $curlErrno = null, $raw = null)
     {
         $this->texts = $texts;
         $this->ok = $ok;
@@ -78,49 +78,4 @@ class TranslateManyResult
         return $this->raw;
     }
 
-    /**
-     * Creates a TranslateManyResult from a TranslateResponse and requestIds
-     *
-     * @param array $requestIds
-     * @param TranslateResponse $response
-     * @return self
-     */
-    public static function fromResponseAndRequestIds(array $requestIds, TranslateResponse $response): self
-    {
-        $responseBody = $response->getResponseBody();
-        $texts = [];
-
-        $isOk = $response->isOk();
-
-        if (is_array($responseBody) && isset($responseBody['results']) && is_array($responseBody['results'])) {
-            $resultMap = [];
-            foreach ($responseBody['results'] as $result) {
-                if (
-                    isset($result['requestId'])
-                    && isset($result['data']['text'])
-                    && isset($result['data']['status'])
-                    && $result['data']['status'] !== 'error'
-                ) {
-                    $resultMap[$result['requestId']] = $result['data']['text'];
-                }
-
-                if (isset($result['data']['status']) && $result['data']['status'] === 'error') {
-                    $isOk = false;
-                }
-            }
-
-            foreach ($requestIds as $requestId) {
-                $texts[] = $resultMap[$requestId] ?? null;
-            }
-        }
-
-        return new self(
-            $texts,
-            $isOk,
-            $response->getError(),
-            $response->getHttpCode(),
-            $response->getCurlErrno(),
-            $response->getRaw()
-        );
-    }
 }

@@ -7,10 +7,10 @@ namespace BeLocal;
 final class BeLocalError
 {
     /** @var string */
-    private $code;
+    private string $code;
 
     /** @var string */
-    private $message;
+    private string $message;
 
     /**
      * @param string $code

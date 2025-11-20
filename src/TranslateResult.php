@@ -7,22 +7,22 @@ namespace BeLocal;
 final class TranslateResult
 {
     /** @var string|null */
-    private $text;
+    private ?string $text;
 
     /** @var bool */
-    private $ok;
+    private bool $ok;
 
     /** @var BeLocalError|null */
-    private $error;
+    private ?BeLocalError $error;
 
     /** @var int|null */
-    private $httpCode;
+    private ?int $httpCode;
 
     /** @var int|null */
-    private $curlErrno;
+    private ?int $curlErrno;
 
     /** @var string|null */
-    private $raw;
+    private ?string $raw;
 
     /**
      * @param string|null     $text
@@ -32,7 +32,7 @@ final class TranslateResult
      * @param int|null        $curlErrno
      * @param string|null     $raw
      */
-    public function __construct($text, bool $ok, BeLocalError $error = null, $httpCode = null, $curlErrno = null, $raw = null)
+    public function __construct($text, bool $ok, ?BeLocalError $error = null, $httpCode = null, $curlErrno = null, $raw = null)
     {
         $this->text = $text;
         $this->ok = $ok;

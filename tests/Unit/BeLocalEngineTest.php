@@ -139,20 +139,20 @@ class BeLocalEngineTest extends TestCase
         // Create a mock response that will return translated texts in the same order
         $transport->expects($this->once())
             ->method('sendBatch')
-            ->willReturnCallback(function($data) {
-                $results = [];
-                foreach ($data['batch'] as $item) {
-                    $requestId = $item['requestId'];
-                    $text = $item['payload']['text'];
-                    $translatedText = ($text === 'Hello') ? 'Bonjour' : 'Au revoir';
-                    $results[] = [
-                        'requestId' => $requestId,
-                        'data' => ['text' => $translatedText, 'status' => 'translated']
-                    ];
-                }
-                $responseData = ['results' => $results];
-                return new TranslateResponse($responseData, true, null, 200, null, null);
-            });
+            ->willReturnCallback(fn($data) => new TranslateResponse(
+                ['results' => array_map(fn($item) => [
+                    'requestId' => $item['requestId'],
+                    'data' => [
+                        'text' => ($item['payload']['text'] === 'Hello') ? 'Bonjour' : 'Au revoir',
+                        'status' => 'translated'
+                    ]
+                ], $data['batch'])],
+                true,
+                null,
+                200,
+                null,
+                null
+            ));
 
         $engine = new BeLocalEngine($transport);
 
@@ -220,18 +220,17 @@ class BeLocalEngineTest extends TestCase
         // Create a mock response with status = error for all items
         $transport->expects($this->once())
             ->method('sendBatch')
-            ->willReturnCallback(function($data) {
-                $results = [];
-                foreach ($data['batch'] as $item) {
-                    $requestId = $item['requestId'];
-                    $results[] = [
-                        'requestId' => $requestId,
-                        'data' => ['text' => 'Some text', 'status' => 'error']
-                    ];
-                }
-                $responseData = ['results' => $results];
-                return new TranslateResponse($responseData, true, null, 200, null, null);
-            });
+            ->willReturnCallback(fn($data) => new TranslateResponse(
+                ['results' => array_map(fn($item) => [
+                    'requestId' => $item['requestId'],
+                    'data' => ['text' => 'Some text', 'status' => 'error']
+                ], $data['batch'])],
+                true,
+                null,
+                200,
+                null,
+                null
+            ));
 
         $engine = new BeLocalEngine($transport);
 
@@ -294,7 +293,7 @@ class BeLocalEngineTest extends TestCase
         $engine = new BeLocalEngine($transport);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Context keys must be strings');
+        $this->expectExceptionMessage('Context keys and values must be strings');
 
         $context = [0 => 'value', 'key' => 'value2'];
         $engine->translateMany(['Hello', 'World'], 'fr', '', $context);
@@ -309,7 +308,7 @@ class BeLocalEngineTest extends TestCase
         $engine = new BeLocalEngine($transport);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Context keys must be strings');
+        $this->expectExceptionMessage('Context keys and values must be strings');
 
         $context = [123 => 'value', 'key' => 'value2'];
         $engine->translate('Hello', 'fr', '', $context);
@@ -411,5 +410,130 @@ class BeLocalEngineTest extends TestCase
         $this->expectExceptionMessage('Expected array<string>, but element at index');
 
         $engine->tManyEditable(['Hello', true, 'World'], 'fr');
+    }
+
+    /**
+     * Test that buildRequestId returns the same result for identical inputs
+     * This is critical for request deduplication
+     */
+    public function testBuildRequestIdDeterministic()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $reflection = new \ReflectionClass($engine);
+        $method = $reflection->getMethod('buildRequestId');
+        $method->setAccessible(true);
+
+        $text = 'Hello World';
+        $lang = 'fr';
+        $context1 = ['user_ctx' => 'test', 'cache_type' => 'editable'];
+        $context2 = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Same data, different order
+
+        $requestId1 = $method->invoke($engine, $text, $lang, $context1);
+        $requestId2 = $method->invoke($engine, $text, $lang, $context2);
+
+        $this->assertEquals($requestId1, $requestId2, 'buildRequestId should return the same result for identical inputs regardless of key order');
+    }
+
+
+    /**
+     * Test that buildRequestId returns different results for different inputs
+     */
+    public function testBuildRequestIdDifferentForDifferentInputs()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $reflection = new \ReflectionClass($engine);
+        $method = $reflection->getMethod('buildRequestId');
+        $method->setAccessible(true);
+
+        $text1 = 'Hello';
+        $text2 = 'World';
+        $lang = 'fr';
+        $context = ['user_ctx' => 'test'];
+
+        $requestId1 = $method->invoke($engine, $text1, $lang, $context);
+        $requestId2 = $method->invoke($engine, $text2, $lang, $context);
+
+        $this->assertNotEquals($requestId1, $requestId2, 'buildRequestId should return different results for different texts');
+    }
+
+    public function testBuildRequestIdDoesNotModifyContext()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $reflection = new \ReflectionClass($engine);
+        $method = $reflection->getMethod('buildRequestId');
+        $method->setAccessible(true);
+
+        $texts = ['Hello', 'World', 'Test'];
+        $lang = 'fr';
+        $context = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Unsorted order
+
+        // Get original keys order
+        $originalKeys = array_keys($context);
+        $requestIds = [];
+
+        // Simulate calling buildRequestId multiple times in a loop (like in translateMany)
+        foreach ($texts as $text) {
+            $requestId = $method->invoke($engine, $text, $lang, $context);
+            $requestIds[] = $requestId;
+            
+            // Verify context array keys order is unchanged after each call
+            $keysAfterCall = array_keys($context);
+            $this->assertEquals($originalKeys, $keysAfterCall, 'buildRequestId should not modify the original context array even after multiple calls');
+        }
+
+        // Verify all requestIds for the same text are the same
+        $firstRequestId = $requestIds[0];
+        foreach ($requestIds as $index => $requestId) {
+            if ($index > 0 && $texts[$index] === $texts[0]) {
+                $this->assertEquals($firstRequestId, $requestId, 'buildRequestId should return the same result for identical inputs');
+            }
+        }
+    }
+
+    public function testTManyEditableSameRequestIdForSameParameters()
+    {
+        $transport = $this->createMock(Transport::class);
+        $engine = new BeLocalEngine($transport);
+
+        $capturedRequests = [];
+
+        $transport->expects($this->exactly(2))
+            ->method('sendBatch')
+            ->willReturnCallback(function($data) use (&$capturedRequests) {
+                $capturedRequests[] = $data['batch'];
+                return new TranslateResponse(
+                    ['results' => array_map(fn($item) => [
+                        'requestId' => $item['requestId'],
+                        'data' => ['text' => 'Translated', 'status' => 'translated']
+                    ], $data['batch'])],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        // First call
+        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', '', 'product');
+        
+        // Second call with identical parameters
+        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', '', 'product');
+
+        // Verify that both calls generated the same requestId
+        $this->assertCount(2, $capturedRequests);
+        $this->assertCount(1, $capturedRequests[0]);
+        $this->assertCount(1, $capturedRequests[1]);
+        
+        $requestId1 = $capturedRequests[0][0]['requestId'];
+        $requestId2 = $capturedRequests[1][0]['requestId'];
+        
+        $this->assertEquals($requestId1, $requestId2, 'tManyEditable should generate the same requestId for identical parameters');
     }
 }

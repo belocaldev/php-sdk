@@ -1,0 +1,97 @@
+services:
+  php74-basic:
+    image: phpdockerio/php:7.4-cli
+    working_dir: /app
+    volumes:
+      - ../..:/app
+      - php74-vendor:/app/vendor
+    env_file:
+      - ../../examples/.env
+    command: >
+      sh -c "
+        composer install --no-interaction --prefer-dist --no-dev 2>&1 | tee /tmp/composer.log &&
+        if grep -qiE '^\s*(Warning|Error|ERROR|WARNING):' /tmp/composer.log; then
+          echo 'ERROR: Found warnings or errors in composer output!' >&2
+          cat /tmp/composer.log >&2
+          exit 1
+        fi &&
+        php -d display_errors=1 -d error_reporting=E_ALL examples/basic_usage.php 2>&1 | tee /tmp/output.log &&
+        if grep -qiE '^\s*(PHP (Fatal|Parse) error|PHP Warning|PHP Notice|PHP Deprecated|Parse error|Fatal error):' /tmp/output.log; then
+          echo 'ERROR: Found PHP warnings or errors in output!' >&2
+          exit 1
+        fi
+      "
+
+  php74-advanced:
+    image: phpdockerio/php:7.4-cli
+    working_dir: /app
+    volumes:
+      - ../..:/app
+      - php74-vendor:/app/vendor
+    env_file:
+      - ../../examples/.env
+    command: >
+      sh -c "
+        composer install --no-interaction --prefer-dist --no-dev 2>&1 | tee /tmp/composer.log &&
+        if grep -qiE '^\s*(Warning|Error|ERROR|WARNING):' /tmp/composer.log; then
+          echo 'ERROR: Found warnings or errors in composer output!' >&2
+          cat /tmp/composer.log >&2
+          exit 1
+        fi &&
+        php -d display_errors=1 -d error_reporting=E_ALL examples/advanced_usage.php 2>&1 | tee /tmp/output.log &&
+        if grep -qiE '^\s*(PHP (Fatal|Parse) error|PHP Warning|PHP Notice|PHP Deprecated|Parse error|Fatal error):' /tmp/output.log; then
+          echo 'ERROR: Found PHP warnings or errors in output!' >&2
+          exit 1
+        fi
+      "
+
+  php84-basic:
+    image: phpdockerio/php:8.4-cli
+    working_dir: /app
+    volumes:
+      - ../..:/app
+      - php84-vendor:/app/vendor
+    env_file:
+      - ../../examples/.env
+    command: >
+      sh -c "
+        composer install --no-interaction --prefer-dist --no-dev 2>&1 | tee /tmp/composer.log &&
+        if grep -qiE '^\s*(Warning|Error|ERROR|WARNING):' /tmp/composer.log; then
+          echo 'ERROR: Found warnings or errors in composer output!' >&2
+          cat /tmp/composer.log >&2
+          exit 1
+        fi &&
+        php -d display_errors=1 -d error_reporting=E_ALL examples/basic_usage.php 2>&1 | tee /tmp/output.log &&
+        if grep -qiE '^\s*(PHP (Fatal|Parse) error|PHP Warning|PHP Notice|PHP Deprecated|Parse error|Fatal error):' /tmp/output.log; then
+          echo 'ERROR: Found PHP warnings or errors in output!' >&2
+          exit 1
+        fi
+      "
+
+  php84-advanced:
+    image: phpdockerio/php:8.4-cli
+    working_dir: /app
+    volumes:
+      - ../..:/app
+      - php84-vendor:/app/vendor
+    env_file:
+      - ../../examples/.env
+    command: >
+      sh -c "
+        composer install --no-interaction --prefer-dist --no-dev 2>&1 | tee /tmp/composer.log &&
+        if grep -qiE '^\s*(Warning|Error|ERROR|WARNING):' /tmp/composer.log; then
+          echo 'ERROR: Found warnings or errors in composer output!' >&2
+          cat /tmp/composer.log >&2
+          exit 1
+        fi &&
+        php -d display_errors=1 -d error_reporting=E_ALL examples/advanced_usage.php 2>&1 | tee /tmp/output.log &&
+        if grep -qiE '^\s*(PHP (Fatal|Parse) error|PHP Warning|PHP Notice|PHP Deprecated|Parse error|Fatal error):' /tmp/output.log; then
+          echo 'ERROR: Found PHP warnings or errors in output!' >&2
+          exit 1
+        fi
+      "
+
+volumes:
+  php74-vendor:
+  php84-vendor:
+

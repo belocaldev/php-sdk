@@ -58,9 +58,36 @@ if ($result->isOk()) {
     echo "Error: " . $result->getError()->getMessage();
 }
 
+// Translate with context (array format for advanced usage)
+$result = $translator->translate(
+    'Product name',
+    'es',
+    'en',
+    ['entity_key' => 'product', 'entity_id' => '123']
+);
+if ($result->isOk()) {
+    echo $result->getText();
+}
+
 // Translate multiple texts at once
 [$aTranslated, $bTranslated] = $translator->tMany(['Hello', 'World'], 'fr');
 // $aTranslated -> 'Bonjour', $bTranslated -> 'Monde'
+
+// Translate multiple TranslateRequest objects in a single API call
+use BeLocal\TranslateRequest;
+
+$requests = [
+    new TranslateRequest(['Hello world', 'How are you?'], 'es', 'en', ['entity_key' => 'product']),
+    new TranslateRequest(['Good morning'], 'fr', null, ['entity_key' => 'product']),
+];
+
+$requests = $translator->translateMultiRequest($requests);
+foreach ($requests as $request) {
+    if ($request->isSuccessful()) {
+        $translatedTexts = $request->getResult()->getTexts();
+        // Process translated texts...
+    }
+}
 ```
 
 ### Error Handling
@@ -76,6 +103,17 @@ $translatedText = $translator->t('Hello, world!', 'fr');
 $result = $translator->translate('Hello, world!', 'fr');
 if ($result->isOk()) {
     echo $result->getText();
+} else {
+    echo "Error: " . $result->getError()->getMessage();
+}
+
+// Batch translation with error handling
+$result = $translator->translateMany(['Hello', 'Goodbye'], 'fr');
+if ($result->isOk()) {
+    $translatedTexts = $result->getTexts();
+    foreach ($translatedTexts as $translated) {
+        echo $translated . "\n";
+    }
 } else {
     echo "Error: " . $result->getError()->getMessage();
 }
@@ -179,6 +217,39 @@ Translates multiple texts in a single API call. Returns TranslateManyResult for 
 
 **Returns:** TranslateManyResult - Object containing the translation results and status information
 
+##### translateMultiRequest(array $requests)
+
+Translates multiple TranslateRequest objects in a single API call. This allows you to translate different sets of texts to different languages in one request.
+
+| Parameter | Type | Description | Default |
+|-----------|------|-------------|---------|
+| $requests | array | Array of TranslateRequest objects | Required |
+
+**Returns:** array<TranslateRequest> - The same array of TranslateRequest objects with filled result property
+
+**Example:**
+```php
+use BeLocal\TranslateRequest;
+
+$requests = [
+    new TranslateRequest(['Hello world', 'How are you?'], 'es', 'en', ['entity_key' => 'product']),
+    new TranslateRequest(['Good morning', 'Thank you'], 'fr', null, ['entity_key' => 'product']),
+];
+
+$requests = $translator->translateMultiRequest($requests);
+
+foreach ($requests as $request) {
+    if ($request->isSuccessful()) {
+        $translatedTexts = $request->getResult()->getTexts();
+        echo "Translated: " . implode(', ', $translatedTexts) . "\n";
+    } else {
+        echo "Error: " . $request->getResult()->getError()->getMessage() . "\n";
+    }
+}
+```
+
+**Throws:** `\InvalidArgumentException` if requests array is empty or contains non-TranslateRequest elements
+
 ### TranslateResult Class
 
 Result of a single translation.
@@ -187,6 +258,9 @@ Result of a single translation.
 - `getText(): ?string` - Translated text or null on failure
 - `isOk(): bool` - Whether translation succeeded
 - `getError(): ?BeLocalError` - Error object or null on success
+- `getHttpCode(): ?int` - HTTP response code or null
+- `getCurlErrno(): ?int` - cURL error number or null
+- `getRaw(): ?string` - Raw response body or null
 
 ### TranslateManyResult Class
 
@@ -196,6 +270,64 @@ Result of a batch translation.
 - `getTexts(): ?array` - Array of translated texts or null on failure
 - `isOk(): bool` - Whether batch translation succeeded
 - `getError(): ?BeLocalError` - Error object or null on success
+- `getHttpCode(): ?int` - HTTP response code or null
+- `getCurlErrno(): ?int` - cURL error number or null
+- `getRaw(): ?string` - Raw response body or null
+
+### TranslateRequest Class
+
+Represents a translation request with multiple texts, target language, optional source language, and context.
+
+**Constructor:**
+```php
+public function __construct(
+    array $texts,
+    string $lang,
+    ?string $sourceLang,
+    array $context
+)
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| $texts | array<string> | Array of texts to translate |
+| $lang | string | Target language code (e.g., 'fr', 'es', 'de') |
+| $sourceLang | string\|null | Source language code (null for auto-detection) |
+| $context | array<string, string> | Context parameters (key-value pairs) |
+
+**Methods:**
+- `getTexts(): array<string>` - Returns the array of texts to translate
+- `getLang(): string` - Returns the target language code
+- `getSourceLang(): ?string` - Returns the source language code or null
+- `getContext(): array<string, string>` - Returns the context parameters
+- `getRequestId(): string` - Returns the unique request ID
+- `setRequestId(string $requestId): void` - Sets the request ID
+- `isCompleted(): bool` - Returns whether the request has been processed
+- `isSuccessful(): bool` - Returns whether the translation was successful
+- `getResult(): ?TranslateManyResult` - Returns the translation result or null
+- `setResult(TranslateManyResult $result): void` - Sets the translation result
+- `toRequestArray(): array` - Converts the request to array format for API calls
+
+**Example:**
+```php
+use BeLocal\TranslateRequest;
+
+$request = new TranslateRequest(
+    ['Hello world', 'How are you?'],
+    'es',
+    'en',
+    ['entity_key' => 'product', 'entity_id' => '123']
+);
+
+// Translate the request
+$requests = $translator->translateMultiRequest([$request]);
+$request = $requests[0];
+
+if ($request->isSuccessful()) {
+    $translatedTexts = $request->getResult()->getTexts();
+    // Process translated texts...
+}
+```
 
 ## Features
 

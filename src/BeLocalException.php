@@ -7,13 +7,13 @@ namespace BeLocal;
 class BeLocalException extends \RuntimeException
 {
     /** @var BeLocalError */
-    private $error;
+    private BeLocalError $error;
 
     /** @var int|null */
-    private $httpCode;
+    private ?int $httpCode;
 
     /** @var int|null */
-    private $curlErrno;
+    private ?int $curlErrno;
 
     /**
      * @param BeLocalError $error

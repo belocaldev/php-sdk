@@ -14,7 +14,7 @@ class BeLocalEngine
     /**
      * @var Transport The transport layer for API communication
      */
-    private $transport;
+    private Transport $transport;
 
     /**
      * Constructor
@@ -39,7 +39,6 @@ class BeLocalEngine
         return new self(new Transport($apiKey, Transport::BASE_URL, $timeout));
     }
 
-
     /**
      * @param array<string> $texts Array of strings to translate
      * @param string $lang Target language code
@@ -61,7 +60,7 @@ class BeLocalEngine
         $batchRequestData = [];
         foreach ($texts as $text) {
             $requestId = $this->buildRequestId($text, $lang, $context);
-            $requestIds []= $requestId;
+            $requestIds[] = $requestId;
 
             if ($text === '') {
                 continue;
@@ -92,7 +91,7 @@ class BeLocalEngine
 
         $response = $this->transport->sendBatch(['batch' => $batchRequestData]);
 
-        return TranslateManyResult::fromResponseAndRequestIds($requestIds, $response);
+        return TranslateManyResultFactory::fromResponseAndRequestIds($requestIds, $response);
     }
 
     /**
@@ -243,9 +242,9 @@ class BeLocalEngine
     private function validateContextArray(array $context)
     {
         foreach ($context as $key => $value) {
-            if (!is_string($key)) {
+            if (!is_string($key) || !is_string($value)) {
                 throw new \InvalidArgumentException(
-                    sprintf('Context keys must be strings, but key "%s" is %s', $key, gettype($key))
+                    sprintf('Context keys and values must be strings, but key "%s" is %s and value "%s" is %s', $key, gettype($key), $value, gettype($value))
                 );
             }
         }
@@ -254,6 +253,7 @@ class BeLocalEngine
     private function buildRequestId(string $text, string $lang, array $context): string
     {
         if (!empty($context)) {
+            $context = array_merge([], $context); // Create a copy compatible with PHP 7.4
             ksort($context);
         }
         $json = json_encode([$text, $lang, $context], JSON_UNESCAPED_UNICODE);
@@ -262,5 +262,61 @@ class BeLocalEngine
             return md5($text . $lang . serialize($context));
         }
         return md5($json);
+    }
+
+    /**
+     * Translate multiple TranslateRequest objects in a single API call
+     *
+     * @param array<TranslateRequest> $requests Array of TranslateRequest objects
+     * @return array<TranslateRequest> The same array of TranslateRequest objects with filled result property
+     * @throws \InvalidArgumentException If requests array is empty or contains non-TranslateRequest elements
+     */
+    public function translateMultiRequest(array $requests): array
+    {
+        if (count($requests) === 0) {
+            throw new \InvalidArgumentException('Requests array cannot be empty');
+        }
+
+        // Validate that all elements are TranslateRequest instances
+        foreach ($requests as $index => $request) {
+            if (!($request instanceof TranslateRequest)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Expected array<TranslateRequest>, but element at index %d is %s', $index, gettype($request))
+                );
+            }
+        }
+
+        // Generate requestId for each request and build request body
+        $requestBody = ['requests' => []];
+        foreach ($requests as $request) {
+            $requestBody['requests'][] = $request->toRequestArray();
+        }
+
+        // Send request to API
+        $response = $this->transport->sendMulti($requestBody);
+
+        // Parse response and map results back to TranslateRequest objects
+        $resultMap = TranslateManyResultFactory::fromMultiResponse($response);
+
+        // Set result on each TranslateRequest
+        foreach ($requests as $request) {
+            $requestId = $request->getRequestId();
+            if (isset($resultMap[$requestId])) {
+                $request->setResult($resultMap[$requestId]);
+            } else {
+                // If no result found, create an error result
+                $error = $response->getError() ?? new BeLocalError(BeLocalErrorCode::UNCAUGHT, 'No result found for requestId: ' . $requestId);
+                $request->setResult(new TranslateManyResult(
+                    null,
+                    false,
+                    $error,
+                    $response->getHttpCode(),
+                    $response->getCurlErrno(),
+                    $response->getRaw()
+                ));
+            }
+        }
+
+        return $requests;
     }
 }

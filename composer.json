@@ -1,5 +1,6 @@
 {
     "name": "belocal/sdk",
+    "version": "0.4.3",
     "type": "library",
     "description": "PHP library for text translation via API",
     "license": "MIT",
@@ -20,7 +21,7 @@
         }
     ],
     "require": {
-        "php": ">=7.0",
+        "php": ">=7.4",
         "ext-curl": "*",
         "ext-json": "*"
     },
@@ -28,6 +29,7 @@
         "phpunit/phpunit": "^11.0"
     },
     "scripts": {
-        "test": "phpunit --configuration phpunit.xml"
+        "test": "phpunit --configuration phpunit.xml",
+        "test-docker": "docker-compose -f tests/Docker/docker-compose.yml run --rm php74-basic && docker-compose -f tests/Docker/docker-compose.yml run --rm php74-advanced && docker-compose -f tests/Docker/docker-compose.yml run --rm php84-basic && docker-compose -f tests/Docker/docker-compose.yml run --rm php84-advanced"
     }
 }

@@ -21,17 +21,17 @@ class Transport
     /**
      * @var string Base URL for the translation API
      */
-    private $baseUrl;
+    private string $baseUrl;
 
     /**
      * @var string API key for authentication
      */
-    private $apiKey;
+    private string $apiKey;
 
     /**
      * @var int Timeout in seconds for API requests
      */
-    private $timeout;
+    private int $timeout;
 
     /**
      * @var resource cURL handle
@@ -69,13 +69,13 @@ class Transport
         curl_setopt($this->curlHandle, CURLOPT_TCP_KEEPALIVE, 1);
         curl_setopt($this->curlHandle, CURLOPT_FORBID_REUSE, false);
         curl_setopt($this->curlHandle, CURLOPT_FRESH_CONNECT, false);
-        curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, array(
+        curl_setopt($this->curlHandle, CURLOPT_HTTPHEADER, [
             'Connection: keep-alive',
             'Content-Type: application/json',
             'Authorization: Bearer ' . $this->apiKey,
             'X-Sdk: ' . self::SDK_NAME,
             'X-Sdk-Version: ' . self::SDK_VERSION,
-        ));
+        ]);
     }
 
     /**
@@ -128,24 +128,26 @@ class Transport
 
             $httpCode = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
             if ($httpCode !== 200) {
-                return match ($httpCode) {
-                    402 => new TranslateResponse(
-                        null,
-                        false,
-                        new BeLocalError(BeLocalErrorCode::PAYMENT_REQUIRED, 'Insufficient balance'),
-                        $httpCode,
-                        null,
-                        $response
-                    ),
-                    default => new TranslateResponse(
-                        null,
-                        false,
-                        new BeLocalError(BeLocalErrorCode::HTTP_NON_200, 'API returned non-200 status code: ' . $httpCode),
-                        $httpCode,
-                        null,
-                        $response
-                    ),
-                };
+                switch ($httpCode) {
+                    case 402:
+                        return new TranslateResponse(
+                            null,
+                            false,
+                            new BeLocalError(BeLocalErrorCode::PAYMENT_REQUIRED, 'Insufficient balance'),
+                            $httpCode,
+                            null,
+                            $response
+                        );
+                    default:
+                        return new TranslateResponse(
+                            null,
+                            false,
+                            new BeLocalError(BeLocalErrorCode::HTTP_NON_200, 'API returned non-200 status code: ' . $httpCode),
+                            $httpCode,
+                            null,
+                            $response
+                        );
+                }
             }
 
             $decoded = json_decode($response, true);
@@ -190,6 +192,17 @@ class Transport
     public function sendBatch(array $data): TranslateResponse
     {
         return $this->sendRequest($data, '/v1/translate/batch');
+    }
+
+    /**
+     * Send a multi translation request
+     *
+     * @param array $data The data to send in the request
+     * @return TranslateResponse The result of the request
+     */
+    public function sendMulti(array $data): TranslateResponse
+    {
+        return $this->sendRequest($data, '/v1/translate/multi');
     }
 
     /**
