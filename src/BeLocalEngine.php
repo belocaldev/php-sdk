@@ -61,9 +61,9 @@ class BeLocalEngine
     }
 
     /**
-     * Quick translation method for a single text with editable cache type
+     * Quick translation method for a single text with managed translations cache type
      * 
-     * This is a convenience method similar to t(), but uses editable cache type,
+     * This is a convenience method similar to t(), but uses managed translations cache type,
      * which allows translations to be edited later in the cache.
      * 
      * @param string $text The text to translate
@@ -73,11 +73,11 @@ class BeLocalEngine
      * @return string Translated text, or original text if translation fails
      *
      */
-    public function tEditable(string $text, string $lang, ?string $sourceLang, string $userContext): string
+    public function tManaged(string $text, string $lang, ?string $sourceLang, string $userContext): string
     {
         $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, [
             TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
-            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_EDITABLE,
+            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
         ]))->getResult();
 
         $texts = $result->getTexts();
@@ -106,9 +106,9 @@ class BeLocalEngine
     }
 
     /**
-     * Quick translation method for multiple texts with editable cache type
+     * Quick translation method for multiple texts with managed translations cache type
      * 
-     * This is a convenience method similar to tMany(), but uses editable cache type,
+     * This is a convenience method similar to tMany(), but uses managed translations cache type,
      * which allows translations to be edited later in the cache.
      * 
      * @param array<string> $texts Array of texts to translate
@@ -118,11 +118,11 @@ class BeLocalEngine
      * @return array<string> Array of translated texts, or original texts array if translation fails
      *
      */
-    public function tManyEditable(array $texts, string $lang, ?string $sourceLang, string $userContext): array
+    public function tManyManaged(array $texts, string $lang, ?string $sourceLang, string $userContext): array
     {
         $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, [
             TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
-            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_EDITABLE,
+            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
         ]))->getResult();
 
         $translatedTexts = $result->getTexts();

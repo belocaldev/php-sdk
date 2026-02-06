@@ -92,7 +92,7 @@ foreach ($requests as $request) {
 
 ### Error Handling
 
-Methods `t()`, `tEditable()`, `tMany()`, and `tManyEditable()` return the original text if an error occurs. This ensures your application continues to function even if the translation service is unavailable.
+Methods `t()`, `tManaged()`, `tMany()`, and `tManyManaged()` return the original text if an error occurs. This ensures your application continues to function even if the translation service is unavailable.
 
 ```php
 <?php
@@ -152,9 +152,9 @@ Convenience method that translates text and returns the translated string direct
 
 **Returns:** string - Translated text (or original text on error)
 
-##### tEditable(string $text, string $lang, string $sourceLang = '', string $context = '')
+##### tManaged(string $text, string $lang, string $sourceLang = '', string $context = '')
 
-Same as `t()`, but forces cache type = `editable` on the server side.
+Same as `t()`, but forces cache type = `managed` (managed translations cache) on the server side.
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
@@ -178,9 +178,9 @@ Batch variant of `t()`. Returns array of translated strings. Original text is re
 
 **Returns:** array<string> - Translated texts (originals preserved on error)
 
-##### tManyEditable(array $texts, string $lang, string $sourceLang = '', string $context = '')
+##### tManyManaged(array $texts, string $lang, string $sourceLang = '', string $context = '')
 
-Batch variant of `tEditable()`. Returns array of translated strings. Original text is returned for failed items.
+Batch variant of `tManaged()`. Returns array of translated strings. Original text is returned for failed items.
 
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
@@ -341,12 +341,3 @@ if ($request->isSuccessful()) {
 ## License
 
 MIT
-
-
-## Pre-push tests
-
-To run unit tests automatically before every `git push` run:
-
-```bash
-printf '#!/usr/bin/env bash\n./vendor/bin/phpunit --configuration phpunit.xml\n' > .git/hooks/pre-push && chmod +x .git/hooks/pre-push
-```

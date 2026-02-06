@@ -499,9 +499,9 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
-     * Test that tManyEditable throws InvalidArgumentException when array contains non-string elements
+     * Test that tManyManaged throws InvalidArgumentException when array contains non-string elements
      */
-    public function testTManyEditableWithNonStringInArray()
+    public function testTManyManagedWithNonStringInArray()
     {
         $transport = $this->createMock(Transport::class);
         $engine = new BeLocalEngine($transport);
@@ -509,7 +509,7 @@ class BeLocalEngineTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Expected array<string>, but element at index');
 
-        $engine->tManyEditable(['Hello', true, 'World'], 'fr', null, 'test context');
+        $engine->tManyManaged(['Hello', true, 'World'], 'fr', null, 'test context');
     }
 
     /**
@@ -520,8 +520,8 @@ class BeLocalEngineTest extends TestCase
     {
         $text = 'Hello World';
         $lang = 'fr';
-        $context1 = ['user_ctx' => 'test', 'cache_type' => 'editable'];
-        $context2 = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Same data, different order
+        $context1 = ['user_ctx' => 'test', 'cache_type' => 'managed'];
+        $context2 = ['cache_type' => 'managed', 'user_ctx' => 'test']; // Same data, different order
 
         $request1 = new TranslateRequest([$text], $lang, null, $context1);
         $request2 = new TranslateRequest([$text], $lang, null, $context2);
@@ -556,7 +556,7 @@ class BeLocalEngineTest extends TestCase
     {
         $texts = ['Hello', 'World', 'Test'];
         $lang = 'fr';
-        $context = ['cache_type' => 'editable', 'user_ctx' => 'test']; // Unsorted order
+        $context = ['cache_type' => 'managed', 'user_ctx' => 'test']; // Unsorted order
 
         // Get original keys order
         $originalKeys = array_keys($context);
@@ -582,7 +582,7 @@ class BeLocalEngineTest extends TestCase
         }
     }
 
-    public function testTManyEditableSameRequestIdForSameParameters()
+    public function testTManyManagedSameRequestIdForSameParameters()
     {
         $transport = $this->createMock(Transport::class);
         $engine = new BeLocalEngine($transport);
@@ -607,10 +607,10 @@ class BeLocalEngineTest extends TestCase
             });
 
         // First call
-        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
+        $engine->tManyManaged(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
         
         // Second call with identical parameters
-        $engine->tManyEditable(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
+        $engine->tManyManaged(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
 
         // Verify that both calls generated the same requestId
         $this->assertCount(2, $capturedRequests);
@@ -620,6 +620,6 @@ class BeLocalEngineTest extends TestCase
         $requestId1 = $capturedRequests[0][0]['requestId'];
         $requestId2 = $capturedRequests[1][0]['requestId'];
         
-        $this->assertEquals($requestId1, $requestId2, 'tManyEditable should generate the same requestId for identical parameters');
+        $this->assertEquals($requestId1, $requestId2, 'tManyManaged should generate the same requestId for identical parameters');
     }
 }
