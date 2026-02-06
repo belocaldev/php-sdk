@@ -31,9 +31,9 @@ php examples/advanced_usage.php <your-api-key>
 ### Sugar Methods (convenience shortcuts)
 
 - `t($text, $lang, $sourceLang = '', $context = '')` - Quick translation, returns string directly
-- `tEditable($text, $lang, $sourceLang = '', $context = '')` - Translation with editable cache type
+- `tManaged($text, $lang, $sourceLang = '', $context = '')` - Translation with managed translations cache type
 - `tMany($texts, $lang, $sourceLang = '', $context = '')` - Quick translation of multiple texts
-- `tManyEditable($texts, $lang, $sourceLang = '', $context = '')` - Multiple translations with editable cache type
+- `tManyManaged($texts, $lang, $sourceLang = '', $context = '')` - Multiple translations with managed translations cache type
 
 ### Factory Method
 

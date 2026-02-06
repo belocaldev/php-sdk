@@ -12,7 +12,7 @@ final class TranslateRequest
 
     public const CTX_KEY_CACHE_TYPE = 'cache_type';
 
-    public const CACHE_TYPE_EDITABLE = 'editable';
+    public const CACHE_TYPE_MANAGED = 'managed';
 
     /** @var array<string> */
     private array $texts;

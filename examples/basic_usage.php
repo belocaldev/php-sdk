@@ -3,7 +3,7 @@
 /**
  * Basic Usage Examples for BeLocal PHP SDK
  * 
- * This file demonstrates how to use sugar methods (t, tMany, tEditable, tManyEditable)
+ * This file demonstrates how to use sugar methods (t, tMany, tManaged, tManyManaged)
  * for quick and easy translations in real-world scenarios.
  * 
  * Usage: php basic_usage.php <api-key>
@@ -35,7 +35,7 @@ if (empty($apiKey)) {
 $engine = BeLocalEngine::withApiKey($apiKey);
 
 // ============================================================================
-// Example 1: tManyEditable() - Translation of store categories list
+// Example 1: tManyManaged() - Translation of store categories list
 // ============================================================================
 
 echo "=== Example 1: Translating Store Categories ===\n";
@@ -50,9 +50,9 @@ $storeCategories = [
     'Books & Media'
 ];
 
-// Translate categories with editable cache (allows future edits)
+// Translate categories with managed translations cache (allows future edits)
 // User context explains that these are e-commerce store navigation categories
-$translatedCategories = $engine->tManyEditable($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header');
+$translatedCategories = $engine->tManyManaged($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header');
 
 echo "Original categories (EN):\n";
 foreach ($storeCategories as $index => $category) {
@@ -119,21 +119,21 @@ foreach ($translatedReviews as $index => $translated) {
 echo "\n";
 
 // ============================================================================
-// Example 4: tEditable() - Translation of country name
+// Example 4: tManaged() - Translation of country name
 // ============================================================================
 
 echo "=== Example 4: Translating Country Name ===\n";
-echo "Translating country name (editable cache allows corrections)\n\n";
+echo "Translating country name (managed translations cache allows corrections)\n\n";
 
 // Country name that might need manual correction later
 $countryName = 'United States';
 
-// Translate country name to German with editable cache
+// Translate country name to German with managed translations cache
 // User context explains that this is a country name displayed in shipping address form
-$translatedCountry = $engine->tEditable($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout');
+$translatedCountry = $engine->tManaged($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout');
 
 echo "Original country name (EN): $countryName\n";
 echo "Translated country name (DE): $translatedCountry\n";
-echo "\nNote: Using editable cache allows you to manually correct the translation if needed\n";
+echo "\nNote: Using managed translations cache allows you to manually correct the translation if needed\n";
 
 echo "\n";
