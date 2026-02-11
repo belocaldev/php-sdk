@@ -12,7 +12,7 @@ namespace BeLocal;
  */
 class Transport
 {
-    const SDK_VERSION = '0.6.0';
+    const SDK_VERSION = '1.0.0';
 
     const SDK_NAME = 'php';
 
