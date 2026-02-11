@@ -24,12 +24,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour'], 'status' => 'cached']
                             ]
                         ]
@@ -81,12 +81,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => [''], 'status' => 'translated']
                             ]
                         ]
@@ -116,12 +116,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour', 'Au revoir'], 'status' => 'translated']
                             ]
                         ]
@@ -154,12 +154,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
                             ]
                         ]
@@ -189,12 +189,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour', 'Au revoir'], 'status' => 'translated']
                             ]
                         ]
@@ -251,12 +251,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Some text'], 'status' => 'error']
                             ]
                         ]
@@ -287,12 +287,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Some text', 'Some text'], 'status' => 'error']
                             ]
                         ]
@@ -400,12 +400,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
                             ]
                         ]
@@ -437,12 +437,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
                             ]
                         ]
@@ -472,12 +472,12 @@ class BeLocalEngineTest extends TestCase
         $transport->expects($this->once())
             ->method('sendMulti')
             ->willReturnCallback(function($data) {
-                $requestId = $data['requests'][0]['requestId'];
+                $request_id = $data['requests'][0]['request_id'];
                 return new TranslateResponse(
                     [
                         'results' => [
                             [
-                                'requestId' => $requestId,
+                                'request_id' => $request_id,
                                 'data' => ['texts' => [], 'status' => 'translated']
                             ]
                         ]
@@ -595,7 +595,7 @@ class BeLocalEngineTest extends TestCase
                 $capturedRequests[] = $data['requests'];
                 return new TranslateResponse(
                     ['results' => array_map(fn($item) => [
-                        'requestId' => $item['requestId'],
+                        'request_id' => $item['request_id'],
                         'data' => ['texts' => ['Translated'], 'status' => 'translated']
                     ], $data['requests'])],
                     true,
@@ -612,14 +612,14 @@ class BeLocalEngineTest extends TestCase
         // Second call with identical parameters
         $engine->tManyManaged(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
 
-        // Verify that both calls generated the same requestId
+        // Verify that both calls generated the same request_id
         $this->assertCount(2, $capturedRequests);
         $this->assertCount(1, $capturedRequests[0]);
         $this->assertCount(1, $capturedRequests[1]);
         
-        $requestId1 = $capturedRequests[0][0]['requestId'];
-        $requestId2 = $capturedRequests[1][0]['requestId'];
+        $request_id1 = $capturedRequests[0][0]['request_id'];
+        $request_id2 = $capturedRequests[1][0]['request_id'];
         
-        $this->assertEquals($requestId1, $requestId2, 'tManyManaged should generate the same requestId for identical parameters');
+        $this->assertEquals($request_id1, $request_id2, 'tManyManaged should generate the same request_id for identical parameters');
     }
 }

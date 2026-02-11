@@ -27,12 +27,12 @@ class TranslateManyResultFactory
             $resultMap = [];
             foreach ($responseBody['results'] as $result) {
                 if (
-                    isset($result['requestId'])
+                    isset($result['request_id'])
                     && isset($result['data']['text'])
                     && isset($result['data']['status'])
                     && $result['data']['status'] !== 'error'
                 ) {
-                    $resultMap[$result['requestId']] = $result['data']['text'];
+                    $resultMap[$result['request_id']] = $result['data']['text'];
                 }
 
                 if (isset($result['data']['status']) && $result['data']['status'] === 'error') {
@@ -69,8 +69,8 @@ class TranslateManyResultFactory
 
         if ($response->isOk() && is_array($responseBody) && isset($responseBody['results']) && is_array($responseBody['results'])) {
             foreach ($responseBody['results'] as $result) {
-                if (isset($result['requestId']) && isset($result['data'])) {
-                    $resultRequestId = $result['requestId'];
+                if (isset($result['request_id']) && isset($result['data'])) {
+                    $resultRequestId = $result['request_id'];
                     $data = $result['data'];
 
                     $texts = null;

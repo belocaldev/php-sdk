@@ -145,8 +145,9 @@ final class TranslateRequest
     }
 
     /**
-     * Builds a request ID from texts array, lang, and context
+     * Builds a request ID from texts array, lang, sourceLang, and context
      * Texts are sorted alphabetically before hashing
+     * Includes sourceLang to properly group requests with different source languages
      *
      * @return string
      */
@@ -161,10 +162,10 @@ final class TranslateRequest
             ksort($context);
         }
 
-        $json = json_encode([$sortedTexts, $this->lang, $context], JSON_UNESCAPED_UNICODE);
+        $json = json_encode([$sortedTexts, $this->lang, $this->sourceLang, $context], JSON_UNESCAPED_UNICODE);
         if ($json === false) {
             // Fallback to simple concatenation if json_encode fails
-            return md5(implode('', $sortedTexts) . $this->lang . serialize($context));
+            return md5(implode('', $sortedTexts) . $this->lang . ($this->sourceLang ?? '') . serialize($context));
         }
         return md5($json);
     }
@@ -177,17 +178,17 @@ final class TranslateRequest
     public function toRequestArray(): array
     {
         $requestData = [
-            'requestId' => $this->requestId,
+            'request_id' => $this->requestId,
             'texts' => $this->texts,
             'lang' => $this->lang,
         ];
 
         if ($this->sourceLang !== null && $this->sourceLang !== '') {
-            $requestData['sourceLang'] = $this->sourceLang;
+            $requestData['source_lang'] = $this->sourceLang;
         }
 
         if (!empty($this->context)) {
-            $requestData['context'] = $this->context;
+            $requestData['ctx'] = $this->context;
         }
 
         return $requestData;

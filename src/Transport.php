@@ -173,28 +173,6 @@ class Transport
     }
 
     /**
-     * Send a single translation request
-     *
-     * @param array $data The data to send in the request
-     * @return TranslateResponse The result of the request
-     */
-    public function send(array $data): TranslateResponse
-    {
-        return $this->sendRequest($data, '/v1/translate');
-    }
-
-    /**
-     * Send a batch translation request
-     *
-     * @param array $data The data to send in the request
-     * @return TranslateResponse The result of the request
-     */
-    public function sendBatch(array $data): TranslateResponse
-    {
-        return $this->sendRequest($data, '/v1/translate/batch');
-    }
-
-    /**
      * Send a multi translation request
      *
      * @param array $data The data to send in the request

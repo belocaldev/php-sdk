@@ -179,7 +179,7 @@ class BeLocalEngine
             if (isset($resultMap[$requestId])) {
                 $request->setResult($resultMap[$requestId]);
             } else {
-                $error = $response->getError() ?? new BeLocalError(BeLocalErrorCode::UNCAUGHT, 'No result found for requestId: ' . $requestId);
+                $error = $response->getError() ?? new BeLocalError(BeLocalErrorCode::UNCAUGHT, 'No result found for request_id: ' . $requestId);
                 $request->setResult(new TranslateManyResult(
                     null,
                     false,
