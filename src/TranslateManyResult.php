@@ -78,4 +78,46 @@ class TranslateManyResult
         return $this->raw;
     }
 
+    /**
+     * Creates a map of requestId => TranslateManyResult from a multi-response
+     *
+     * @param TranslateResponse $response
+     * @return array<string, TranslateManyResult> Map of requestId => TranslateManyResult
+     */
+    public static function fromMultiResponse(TranslateResponse $response): array
+    {
+        $responseBody = $response->getResponseBody();
+        $resultMap = [];
+
+        if ($response->isOk() && is_array($responseBody) && isset($responseBody['results']) && is_array($responseBody['results'])) {
+            foreach ($responseBody['results'] as $result) {
+                if (isset($result['request_id']) && isset($result['data'])) {
+                    $resultRequestId = $result['request_id'];
+                    $data = $result['data'];
+
+                    $texts = null;
+                    $isOk = true;
+
+                    if (isset($data['texts']) && is_array($data['texts'])) {
+                        $texts = $data['texts'];
+                    }
+
+                    if (isset($data['status']) && $data['status'] === 'error') {
+                        $isOk = false;
+                    }
+
+                    $resultMap[$resultRequestId] = new self(
+                        $texts,
+                        $isOk,
+                        null,
+                        $response->getHttpCode(),
+                        $response->getCurlErrno(),
+                        $response->getRaw()
+                    );
+                }
+            }
+        }
+
+        return $resultMap;
+    }
 }

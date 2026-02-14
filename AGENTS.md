@@ -11,17 +11,12 @@
 
 ```
 src/
-├── BeLocalEngine.php      # Main API
-├── BeLocalError.php
-├── BeLocalErrorCode.php
-├── BeLocalException.php
-├── Transport.php          # HTTP (User-Agent uses composer version)
-├── TranslateRequest.php
-├── TranslateResponse.php
-├── TranslateResult.php
-├── TranslateManyResult.php
-├── TranslateManyResultFactory.php
-└── ...
+├── BeLocalEngine.php      # Main API: t(), tMany(), translateRequest(), translateMultiRequest()
+├── BeLocalError.php       # Error value object + error code constants
+├── Transport.php          # HTTP/cURL (User-Agent uses composer version)
+├── TranslateRequest.php   # Request object
+├── TranslateResponse.php  # Raw HTTP response wrapper (internal)
+├── TranslateManyResult.php # Parsed result for user + static factory
 tests/
 ├── Unit/
 └── Docker/

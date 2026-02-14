@@ -6,12 +6,27 @@ namespace BeLocal;
 
 final class TranslateRequest
 {
+    // Context keys
+    public const CTX_KEY_USER_TYPE = 'user_type';
     public const CTX_KEY_USER_CONTEXT = 'user_ctx';
-
-    public const USER_CONTEXT_TYPE_PRODUCT = 'product';
-
     public const CTX_KEY_CACHE_TYPE = 'cache_type';
+    public const CTX_KEY_ENTITY_KEY = 'entity_key';
+    public const CTX_KEY_ENTITY_ID = 'entity_id';
 
+    /** @var array<string> All allowed context keys */
+    private const ALLOWED_CTX_KEYS = [
+        self::CTX_KEY_USER_TYPE,
+        self::CTX_KEY_USER_CONTEXT,
+        self::CTX_KEY_CACHE_TYPE,
+        self::CTX_KEY_ENTITY_KEY,
+        self::CTX_KEY_ENTITY_ID,
+    ];
+
+    // Values for user_type
+    public const USER_TYPE_PRODUCT = 'product';
+    public const USER_TYPE_CHAT = 'chat';
+
+    // Values for cache_type
     public const CACHE_TYPE_MANAGED = 'managed';
 
     /** @var array<string> */
@@ -43,16 +58,6 @@ final class TranslateRequest
         $this->result = null;
 
         $this->requestId = $this->buildRequestId();
-    }
-
-    public function toTranslateRequestArray(): array
-    {
-        return array_map(fn($text) => [
-            'text' => $text,
-            'lang' => $this->lang,
-            'sourceLang' => $this->sourceLang,
-            'context' => $this->context,
-        ], $this->texts);
     }
 
     public function isCompleted(): bool
@@ -105,11 +110,6 @@ final class TranslateRequest
         return $this->requestId;
     }
 
-    public function setRequestId(string $requestId): void
-    {
-        $this->requestId = $requestId;
-    }
-
     /**
      * Validates that array contains only string elements
      *
@@ -128,7 +128,9 @@ final class TranslateRequest
     }
 
     /**
-     * Validates that context array has string keys and values
+     * Validates that context array has string keys and values, and only allowed keys
+     *
+     * Allowed keys: user_type, user_ctx, cache_type, entity_key, entity_id
      *
      * @param array $context
      * @throws \InvalidArgumentException
@@ -139,6 +141,11 @@ final class TranslateRequest
             if (!is_string($key) || !is_string($value)) {
                 throw new \InvalidArgumentException(
                     sprintf('Context keys and values must be strings, but key "%s" is %s and value "%s" is %s', $key, gettype($key), $value, gettype($value))
+                );
+            }
+            if (!in_array($key, self::ALLOWED_CTX_KEYS, true)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Unknown context key "%s". Allowed keys: %s', $key, implode(', ', self::ALLOWED_CTX_KEYS))
                 );
             }
         }

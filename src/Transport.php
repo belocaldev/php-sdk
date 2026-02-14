@@ -12,7 +12,7 @@ namespace BeLocal;
  */
 class Transport
 {
-    const SDK_VERSION = '1.0.0';
+    const SDK_VERSION = '1.0.1';
 
     const SDK_NAME = 'php';
 
@@ -87,89 +87,58 @@ class Transport
      */
     private function sendRequest(array $data, string $endpoint): TranslateResponse
     {
-        try {
-            $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE);
 
-            if ($json === false) {
-                $err = json_last_error();
-                if ($err === JSON_ERROR_UTF8) {
-                    throw new BeLocalException(
-                        new BeLocalError(BeLocalErrorCode::JSON_UTF8, 'Invalid UTF-8 string passed to json_encode()')
-                    );
-                }
+        if ($json === false) {
+            $err = json_last_error();
+            $code = ($err === JSON_ERROR_UTF8) ? BeLocalError::JSON_UTF8 : BeLocalError::JSON_ENCODE;
+            $msg = ($err === JSON_ERROR_UTF8)
+                ? 'Invalid UTF-8 string passed to json_encode()'
+                : 'json_encode() failed with error code: ' . $err;
 
-                throw new BeLocalException(
-                    new BeLocalError(BeLocalErrorCode::JSON_ENCODE, 'json_encode() failed with error code: ' . $err)
-                );
-            }
+            return new TranslateResponse(null, false, new BeLocalError($code, $msg));
+        }
 
-            curl_setopt($this->curlHandle, CURLOPT_URL, $this->baseUrl . $endpoint);
-            curl_setopt($this->curlHandle, CURLOPT_POST, true);
-            curl_setopt(
-                $this->curlHandle,
-                CURLOPT_POSTFIELDS,
-                $json
-            );
+        curl_setopt($this->curlHandle, CURLOPT_URL, $this->baseUrl . $endpoint);
+        curl_setopt($this->curlHandle, CURLOPT_POST, true);
+        curl_setopt($this->curlHandle, CURLOPT_POSTFIELDS, $json);
 
-            $response = curl_exec($this->curlHandle);
+        $response = curl_exec($this->curlHandle);
 
-            if ($response === false) {
-                $errno = curl_errno($this->curlHandle);
-                $error = curl_error($this->curlHandle);
+        if ($response === false) {
+            $errno = curl_errno($this->curlHandle);
+            $error = curl_error($this->curlHandle);
 
-                return new TranslateResponse(
-                    null,
-                    false,
-                    new BeLocalError(BeLocalErrorCode::NETWORK, "cURL error ($errno): $error"),
-                    null,
-                    $errno
-                );
-            }
-
-            $httpCode = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
-            if ($httpCode !== 200) {
-                switch ($httpCode) {
-                    case 402:
-                        return new TranslateResponse(
-                            null,
-                            false,
-                            new BeLocalError(BeLocalErrorCode::PAYMENT_REQUIRED, 'Insufficient balance'),
-                            $httpCode,
-                            null,
-                            $response
-                        );
-                    default:
-                        return new TranslateResponse(
-                            null,
-                            false,
-                            new BeLocalError(BeLocalErrorCode::HTTP_NON_200, 'API returned non-200 status code: ' . $httpCode),
-                            $httpCode,
-                            null,
-                            $response
-                        );
-                }
-            }
-
-            $decoded = json_decode($response, true);
-            if (!is_array($decoded)) {
-                return new TranslateResponse(
-                    null,
-                    false,
-                    new BeLocalError(BeLocalErrorCode::DECODE, 'Invalid JSON response'),
-                    $httpCode,
-                    null,
-                    $response
-                );
-            }
-
-            return new TranslateResponse($decoded, true, null, $httpCode, null, $response);
-        } catch (\Throwable $e) {
             return new TranslateResponse(
                 null,
                 false,
-                new BeLocalError(BeLocalErrorCode::UNCAUGHT, $e->getMessage())
+                new BeLocalError(BeLocalError::NETWORK, "cURL error ($errno): $error"),
+                null,
+                $errno
             );
         }
+
+        $httpCode = curl_getinfo($this->curlHandle, CURLINFO_HTTP_CODE);
+        if ($httpCode !== 200) {
+            $code = ($httpCode === 402) ? BeLocalError::PAYMENT_REQUIRED : BeLocalError::HTTP_NON_200;
+            $msg = ($httpCode === 402) ? 'Insufficient balance' : 'API returned non-200 status code: ' . $httpCode;
+
+            return new TranslateResponse(null, false, new BeLocalError($code, $msg), $httpCode, null, $response);
+        }
+
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) {
+            return new TranslateResponse(
+                null,
+                false,
+                new BeLocalError(BeLocalError::DECODE, 'Invalid JSON response'),
+                $httpCode,
+                null,
+                $response
+            );
+        }
+
+        return new TranslateResponse($decoded, true, null, $httpCode, null, $response);
     }
 
     /**

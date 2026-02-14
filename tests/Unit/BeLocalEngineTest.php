@@ -499,7 +499,7 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
-     * Test that tManyManaged throws InvalidArgumentException when array contains non-string elements
+     * Test that tMany with managed=true throws InvalidArgumentException when array contains non-string elements
      */
     public function testTManyManagedWithNonStringInArray()
     {
@@ -509,7 +509,7 @@ class BeLocalEngineTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Expected array<string>, but element at index');
 
-        $engine->tManyManaged(['Hello', true, 'World'], 'fr', null, 'test context');
+        $engine->tMany(['Hello', true, 'World'], 'fr', null, 'test context', true);
     }
 
     /**
@@ -606,11 +606,11 @@ class BeLocalEngineTest extends TestCase
                 );
             });
 
-        // First call
-        $engine->tManyManaged(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
+        // First call with managed=true
+        $engine->tMany(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product', true);
         
         // Second call with identical parameters
-        $engine->tManyManaged(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product');
+        $engine->tMany(['Karcher SC 3 EasyFix STEAM CLEANER'], 'ru', null, 'product', true);
 
         // Verify that both calls generated the same request_id
         $this->assertCount(2, $capturedRequests);
@@ -620,6 +620,6 @@ class BeLocalEngineTest extends TestCase
         $request_id1 = $capturedRequests[0][0]['request_id'];
         $request_id2 = $capturedRequests[1][0]['request_id'];
         
-        $this->assertEquals($request_id1, $request_id2, 'tManyManaged should generate the same request_id for identical parameters');
+        $this->assertEquals($request_id1, $request_id2, 'tMany with managed=true should generate the same request_id for identical parameters');
     }
 }

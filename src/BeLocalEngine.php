@@ -40,90 +40,50 @@ class BeLocalEngine
     }
 
     /**
-     * Quick translation method for a single text
+     * Translate a single text
      * 
-     * This is a convenience method that wraps translateRequest() and returns the translated text directly,
-     * or the original text if translation fails.
+     * Returns the translated text, or the original text if translation fails.
      * 
      * @param string $text The text to translate
      * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
      * @param string|null $sourceLang Source language code (optional, auto-detect if null)
      * @param string $userContext User context string for translation context
+     * @param bool $managed Use managed translations cache type (editable translations)
      * @return string Translated text, or original text if translation fails
-     *
      */
-    public function t(string $text, string $lang, ?string $sourceLang, string $userContext): string
+    public function t(string $text, string $lang, ?string $sourceLang, string $userContext, bool $managed = false): string
     {
-        $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext]))->getResult();
+        $ctx = [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext];
+        if ($managed) {
+            $ctx[TranslateRequest::CTX_KEY_CACHE_TYPE] = TranslateRequest::CACHE_TYPE_MANAGED;
+        }
+
+        $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, $ctx))->getResult();
 
         $texts = $result->getTexts();
         return ($result->isOk() && $texts !== null && isset($texts[0])) ? $texts[0] : $text;
     }
 
     /**
-     * Quick translation method for a single text with managed translations cache type
+     * Translate multiple texts
      * 
-     * This is a convenience method similar to t(), but uses managed translations cache type,
-     * which allows translations to be edited later in the cache.
-     * 
-     * @param string $text The text to translate
-     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
-     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
-     * @param string $userContext User context string for translation context
-     * @return string Translated text, or original text if translation fails
-     *
-     */
-    public function tManaged(string $text, string $lang, ?string $sourceLang, string $userContext): string
-    {
-        $result = $this->translateRequest(new TranslateRequest([$text], $lang, $sourceLang, [
-            TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
-            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
-        ]))->getResult();
-
-        $texts = $result->getTexts();
-        return ($result->isOk() && $texts !== null && isset($texts[0])) ? $texts[0] : $text;
-    }
-
-    /**
-     * Quick translation method for multiple texts
-     * 
-     * This is a convenience method that wraps translateRequest() and returns an array of translated texts,
-     * or the original texts array if translation fails.
+     * Returns an array of translated texts, or the original texts if translation fails.
      * 
      * @param array<string> $texts Array of texts to translate
      * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
      * @param string|null $sourceLang Source language code (optional, auto-detect if null)
      * @param string $userContext User context string for translation context
-     * @return array<string> Array of translated texts, or original texts array if translation fails
-     *
+     * @param bool $managed Use managed translations cache type (editable translations)
+     * @return array<string> Array of translated texts, or original texts if translation fails
      */
-    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext): array
+    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext, bool $managed = false): array
     {
-        $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext]))->getResult();
+        $ctx = [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext];
+        if ($managed) {
+            $ctx[TranslateRequest::CTX_KEY_CACHE_TYPE] = TranslateRequest::CACHE_TYPE_MANAGED;
+        }
 
-        $translatedTexts = $result->getTexts();
-        return ($result->isOk() && $translatedTexts !== null) ? $translatedTexts : $texts;
-    }
-
-    /**
-     * Quick translation method for multiple texts with managed translations cache type
-     * 
-     * This is a convenience method similar to tMany(), but uses managed translations cache type,
-     * which allows translations to be edited later in the cache.
-     * 
-     * @param array<string> $texts Array of texts to translate
-     * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
-     * @param string|null $sourceLang Source language code (optional, auto-detect if null)
-     * @param string $userContext User context string for translation context
-     * @return array<string> Array of translated texts, or original texts array if translation fails
-     *
-     */
-    public function tManyManaged(array $texts, string $lang, ?string $sourceLang, string $userContext): array
-    {
-        $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, [
-            TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext,
-            TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
-        ]))->getResult();
+        $result = $this->translateRequest(new TranslateRequest($texts, $lang, $sourceLang, $ctx))->getResult();
 
         $translatedTexts = $result->getTexts();
         return ($result->isOk() && $translatedTexts !== null) ? $translatedTexts : $texts;
@@ -172,14 +132,14 @@ class BeLocalEngine
 
         $response = $this->transport->sendMulti($requestBody);
 
-        $resultMap = TranslateManyResultFactory::fromMultiResponse($response);
+        $resultMap = TranslateManyResult::fromMultiResponse($response);
 
         foreach ($requests as $request) {
             $requestId = $request->getRequestId();
             if (isset($resultMap[$requestId])) {
                 $request->setResult($resultMap[$requestId]);
             } else {
-                $error = $response->getError() ?? new BeLocalError(BeLocalErrorCode::UNCAUGHT, 'No result found for request_id: ' . $requestId);
+                $error = $response->getError() ?? new BeLocalError(BeLocalError::UNCAUGHT, 'No result found for request_id: ' . $requestId);
                 $request->setResult(new TranslateManyResult(
                     null,
                     false,

@@ -3,7 +3,7 @@
 /**
  * Basic Usage Examples for BeLocal PHP SDK
  * 
- * This file demonstrates how to use sugar methods (t, tMany, tManaged, tManyManaged)
+ * This file demonstrates how to use sugar methods (t, tMany)
  * for quick and easy translations in real-world scenarios.
  * 
  * Usage: php basic_usage.php <api-key>
@@ -52,7 +52,7 @@ $storeCategories = [
 
 // Translate categories with managed translations cache (allows future edits)
 // User context explains that these are e-commerce store navigation categories
-$translatedCategories = $engine->tManyManaged($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header');
+$translatedCategories = $engine->tMany($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header', true);
 
 echo "Original categories (EN):\n";
 foreach ($storeCategories as $index => $category) {
@@ -128,9 +128,9 @@ echo "Translating country name (managed translations cache allows corrections)\n
 // Country name that might need manual correction later
 $countryName = 'United States';
 
-// Translate country name to German with managed translations cache
+// Translate country name to German with managed translations cache (managed=true)
 // User context explains that this is a country name displayed in shipping address form
-$translatedCountry = $engine->tManaged($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout');
+$translatedCountry = $engine->t($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout', true);
 
 echo "Original country name (EN): $countryName\n";
 echo "Translated country name (DE): $translatedCountry\n";

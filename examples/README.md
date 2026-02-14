@@ -4,8 +4,8 @@ This directory contains example code demonstrating how to use the BeLocal PHP SD
 
 ## Files
 
-- **basic_usage.php** - Basic examples showing how to use all methods of BeLocalEngine
-- **advanced_usage.php** - Advanced examples with error handling and best practices
+- **basic_usage.php** - Basic examples using `t()` and `tMany()` sugar methods
+- **advanced_usage.php** - Advanced examples using `translateRequest()` and `translateMultiRequest()`
 
 ## Quick Start
 
@@ -22,95 +22,50 @@ php examples/advanced_usage.php <your-api-key>
 
 ## Available Methods
 
-### Basic Translation Methods
-
-- `translate($text, $lang, $sourceLang = '', $context = [])` - Translate a single text
-- `translateMany($texts, $lang, $sourceLang = '', $context = [])` - Translate multiple texts
-- `translateMultiRequest($requests)` - Translate multiple TranslateRequest objects in a single API call
-
 ### Sugar Methods (convenience shortcuts)
 
-- `t($text, $lang, $sourceLang = '', $context = '')` - Quick translation, returns string directly
-- `tManaged($text, $lang, $sourceLang = '', $context = '')` - Translation with managed translations cache type
-- `tMany($texts, $lang, $sourceLang = '', $context = '')` - Quick translation of multiple texts
-- `tManyManaged($texts, $lang, $sourceLang = '', $context = '')` - Multiple translations with managed translations cache type
+- `t($text, $lang, $sourceLang, $userContext, $managed = false)` - Translate single text, returns string
+- `tMany($texts, $lang, $sourceLang, $userContext, $managed = false)` - Translate multiple texts, returns array
 
-### Factory Method
+### Advanced Methods
+
+- `translateRequest($request)` - Translate a single TranslateRequest object
+- `translateMultiRequest($requests)` - Translate multiple TranslateRequest objects in a single API call
+
+### Factory
 
 - `BeLocalEngine::withApiKey($apiKey, $timeout = 30)` - Create engine instance with API key
 
-## Examples Overview
+## Examples
 
-### Basic Translation
+### Quick Translation
 ```php
 $engine = BeLocalEngine::withApiKey('your-api-key');
-$result = $engine->translate('Hello, world!', 'es');
-if ($result->isOk()) {
-    echo $result->getText();
-}
-```
 
-### Batch Translation
-```php
-$texts = ['Hello', 'Goodbye', 'Thank you'];
-$result = $engine->translateMany($texts, 'fr');
-if ($result->isOk()) {
-    $translatedTexts = $result->getTexts();
-}
+// Single text
+$translated = $engine->t('Hello, world!', 'es', null, 'website greeting');
+
+// Multiple texts
+$translated = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'website UI');
+
+// With managed cache (editable translations)
+$translated = $engine->t('Hello', 'es', null, 'greeting', true);
 ```
 
 ### Multi-Request Translation
 ```php
 $requests = [
-    new TranslateRequest(['Hello', 'World'], 'es', 'en', ['entity_key' => 'product']),
-    new TranslateRequest(['Goodbye'], 'fr', null, []),
+    new TranslateRequest(['Hello', 'World'], 'es', 'en', ['user_ctx' => 'product']),
+    new TranslateRequest(['Goodbye'], 'fr', null, ['user_ctx' => 'email']),
 ];
 $requests = $engine->translateMultiRequest($requests);
 foreach ($requests as $request) {
     if ($request->isSuccessful()) {
-        $translatedTexts = $request->getResult()->getTexts();
+        $texts = $request->getResult()->getTexts();
     }
 }
-```
-
-### Quick Translation (Sugar Methods)
-```php
-// Returns translated text directly
-$translated = $engine->t('Hello, world!', 'es');
-
-// Multiple texts
-$translatedTexts = $engine->tMany(['Hello', 'Goodbye'], 'fr');
-```
-
-## Error Handling
-
-All methods return result objects that you should check:
-
-```php
-$result = $engine->translate('Hello', 'es');
-if ($result->isOk()) {
-    echo $result->getText();
-} else {
-    $error = $result->getError();
-    echo "Error: " . $error->getMessage();
-}
-```
-
-## Context Usage
-
-Context helps the translation engine provide better translations:
-
-```php
-$result = $engine->translate(
-    'Product name',
-    'es',
-    'en',
-    ['entity_key' => 'product', 'entity_id' => '123']
-);
 ```
 
 ## See Also
 
 - [Main README](../README.md)
-- [API Documentation](../README.md)
-
