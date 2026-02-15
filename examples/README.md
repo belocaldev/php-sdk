@@ -1,11 +1,4 @@
-# BeLocal PHP SDK Examples
-
-This directory contains example code demonstrating how to use the BeLocal PHP SDK.
-
-## Files
-
-- **basic_usage.php** - Basic examples using `t()` and `tMany()` sugar methods
-- **advanced_usage.php** - Advanced examples using `translateRequest()` and `translateMultiRequest()`
+# Examples
 
 ## Quick Start
 
@@ -14,58 +7,39 @@ This directory contains example code demonstrating how to use the BeLocal PHP SD
 composer install
 ```
 
-2. Run examples with your API key as a command line argument:
-```bash
-php examples/basic_usage.php <your-api-key>
-php examples/advanced_usage.php <your-api-key>
-```
+2. Run examples with your API key:
 
-## Available Methods
+   **Option A** — copy `.env.example` to `.env` and put your key there:
+   ```bash
+   cp examples/.env.example examples/.env
+   # Edit examples/.env and set API_KEY=your-key
+   php examples/basic_usage.php
+   ```
 
-### Sugar Methods (convenience shortcuts)
+   **Option B** — pass key as argument or set env var:
+   ```bash
+   php examples/basic_usage.php <your-api-key>
+   # or
+   API_KEY=your-key php examples/basic_usage.php
+   ```
 
-- `t($text, $lang, $sourceLang, $userContext, $managed = false)` - Translate single text, returns string
-- `tMany($texts, $lang, $sourceLang, $userContext, $managed = false)` - Translate multiple texts, returns array
+## basic_usage.php
 
-### Advanced Methods
+Sugar methods `t()` and `tMany()` for quick translations.
 
-- `translateRequest($request)` - Translate a single TranslateRequest object
-- `translateMultiRequest($requests)` - Translate multiple TranslateRequest objects in a single API call
+| # | Scenario | Method | Managed | Languages |
+|---|----------|--------|---------|-----------|
+| 1 | Store categories list | `tMany()` | yes | EN → RU |
+| 2 | User search query | `t()` | no | EN → ES |
+| 3 | Product reviews | `tMany()` | no | EN → FR |
+| 4 | Country name | `t()` | yes | EN → DE |
 
-### Factory
+## advanced_usage.php
 
-- `BeLocalEngine::withApiKey($apiKey, $timeout = 30)` - Create engine instance with API key
+Advanced methods `translateRequest()` and `translateMultiRequest()` with full control over requests, error handling, and entity context.
 
-## Examples
-
-### Quick Translation
-```php
-$engine = BeLocalEngine::withApiKey('your-api-key');
-
-// Single text
-$translated = $engine->t('Hello, world!', 'es', null, 'website greeting');
-
-// Multiple texts
-$translated = $engine->tMany(['Hello', 'Goodbye'], 'fr', null, 'website UI');
-
-// With managed cache (editable translations)
-$translated = $engine->t('Hello', 'es', null, 'greeting', true);
-```
-
-### Multi-Request Translation
-```php
-$requests = [
-    new TranslateRequest(['Hello', 'World'], 'es', 'en', ['user_ctx' => 'product']),
-    new TranslateRequest(['Goodbye'], 'fr', null, ['user_ctx' => 'email']),
-];
-$requests = $engine->translateMultiRequest($requests);
-foreach ($requests as $request) {
-    if ($request->isSuccessful()) {
-        $texts = $request->getResult()->getTexts();
-    }
-}
-```
-
-## See Also
-
-- [Main README](../README.md)
+| # | Scenario | Method | Features |
+|---|----------|--------|----------|
+| 1 | News article + comments | `translateRequest()` | Single request with multiple texts, error handling |
+| 2 | Product cards (3 products) | `translateMultiRequest()` | Batch request, entity context (`entity_key`, `entity_id`) |
+| 3 | Product names (repeat) | `translateMultiRequest()` | Cache verification — same entity context returns cached results |

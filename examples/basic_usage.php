@@ -13,6 +13,12 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use BeLocal\BeLocalEngine;
 
+// Load API_KEY from .env (so getenv('API_KEY') works)
+$envFile = __DIR__ . '/.env';
+if (is_readable($envFile) && preg_match('/^API_KEY=(.+)$/m', file_get_contents($envFile), $m)) {
+    putenv('API_KEY=' . trim($m[1]));
+}
+
 // Get API key from command line argument or environment variable
 $apiKey = null;
 if ($argc >= 2) {
