@@ -1,4 +1,4 @@
-# BeLocal Translation SDK for PHP
+# belocal/sdk
 
 A PHP library for text translation via API with HTTP/1.1 keep-alive support.
 
