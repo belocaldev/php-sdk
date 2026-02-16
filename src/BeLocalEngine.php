@@ -51,7 +51,7 @@ class BeLocalEngine
      * @param bool $managed Use managed translations cache type (editable translations)
      * @return string Translated text, or original text if translation fails
      */
-    public function t(string $text, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): string
+    public function t(string $text, string $lang, ?string $sourceLang = null, string $userContext = '', bool $managed = false): string
     {
         $ctx = [];
         if ($userContext !== '') {
@@ -79,7 +79,7 @@ class BeLocalEngine
      * @param bool $managed Use managed translations cache type (editable translations)
      * @return array<string> Array of translated texts, or original texts if translation fails
      */
-    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): array
+    public function tMany(array $texts, string $lang, ?string $sourceLang = null, string $userContext = '', bool $managed = false): array
     {
         $ctx = [];
         if ($userContext !== '') {

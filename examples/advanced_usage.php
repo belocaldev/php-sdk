@@ -58,7 +58,7 @@ $comments = [
 $allTexts = array_merge([$newsArticle], $comments);
 
 // Create translation request for news article and comments
-$request = new TranslateRequest($allTexts, 'ru', 'en', []);
+$request = new TranslateRequest($allTexts, 'ru', 'en');
 
 // Translate the request
 $request = $engine->translateRequest($request);

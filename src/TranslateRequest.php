@@ -46,7 +46,7 @@ final class TranslateRequest
 
     private ?TranslateManyResult $result;
 
-    public function __construct(array $texts, string $lang, ?string $sourceLang, array $context)
+    public function __construct(array $texts, string $lang, ?string $sourceLang = null, array $context = [])
     {
         $this->validateTextsArray($texts);
         $this->validateContextArray($context);

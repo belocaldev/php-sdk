@@ -50,6 +50,42 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
+     * Test that t() works without sourceLang (optional parameter)
+     */
+    public function testTWithoutSourceLang()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $request_id = $data['requests'][0]['request_id'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'request_id' => $request_id,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        // Call t() with only text and lang - sourceLang omitted (auto-detect)
+        $result = $engine->t('Hello', 'fr');
+
+        $this->assertEquals('Bonjour', $result);
+    }
+
+    /**
      * Test the t method with an error response (should return original text)
      */
     public function testTError()
@@ -388,6 +424,44 @@ class BeLocalEngineTest extends TestCase
         $context = [123 => 'value', 'key' => 'value2'];
         $request = new TranslateRequest(['Hello'], 'fr', null, $context);
         $engine->translateRequest($request);
+    }
+
+    /**
+     * Test that TranslateRequest works without sourceLang (optional parameter)
+     */
+    public function testTranslateRequestWithoutSourceLang()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $request_id = $data['requests'][0]['request_id'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'request_id' => $request_id,
+                                'data' => ['texts' => ['Bonjour'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+
+        // TranslateRequest with only texts, lang - context and sourceLang omitted
+        $request = new TranslateRequest(['Hello'], 'fr');
+        $engine->translateRequest($request);
+
+        $this->assertTrue($request->isSuccessful());
+        $this->assertNull($request->getSourceLang());
     }
 
     /**

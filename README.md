@@ -28,35 +28,37 @@ use BeLocal\BeLocalEngine;
 
 $translator = BeLocalEngine::withApiKey('your-api-key-here');
 
-$translated = $translator->t('Hello, world!', 'fr', null);
+$translated = $translator->t('Hello, world!', 'fr');
 // "Bonjour, monde !"
 ```
 
 ### t() — translate single text
 
 ```php
-$translated = $translator->t('Hello, world!', 'fr', null);
-// Optional: pass user context to improve translation accuracy
-$translated = $translator->t('Hello, world!', 'fr', null, 'website greeting');
+$translated = $translator->t('crane', 'ru', 'en', 'Website for construction services');
+// Optional context clarifies which translation to use
+// "кран"
 ```
 
 ### tMany() — translate multiple texts
 
 ```php
-$translated = $translator->tMany(['Hello', 'Goodbye'], 'fr', null);
-// ['Bonjour', 'Au revoir']
+$translated = $translator->tMany(['Hello, world!', 'Goodbye'], 'fr');
+// ['Bonjour, monde !', 'Au revoir']
 ```
 
 ### t() with managed cache
 
 ```php
 $translated = $translator->t('Hello', 'fr', null, '', true);
+// Editing the result becomes available in the Managed Translations section
 ```
 
 ### tMany() with managed cache
 
 ```php
 $translated = $translator->tMany(['Hello', 'Goodbye'], 'fr', null, '', true);
+// Editing the result becomes available in the Managed Translations section
 ```
 
 ### translateRequest() — single request with full control
@@ -64,9 +66,8 @@ $translated = $translator->tMany(['Hello', 'Goodbye'], 'fr', null, '', true);
 ```php
 use BeLocal\TranslateRequest;
 
-// Context (including user_ctx) is optional
 $request = $translator->translateRequest(
-    new TranslateRequest(['Hello'], 'fr', null, [])
+    new TranslateRequest(['Hello'], 'fr')
 );
 
 if ($request->isSuccessful()) {
@@ -78,8 +79,8 @@ if ($request->isSuccessful()) {
 
 ```php
 $requests = [
-    new TranslateRequest(['Hello world', 'How are you?'], 'es', 'en', []),
-    new TranslateRequest(['Good morning'], 'fr', null, []),
+    new TranslateRequest(['Hello world', 'How are you?'], 'es', 'en'),
+    new TranslateRequest(['Good morning'], 'fr'),
 ];
 
 $requests = $translator->translateMultiRequest($requests);
@@ -97,7 +98,7 @@ foreach ($requests as $request) {
 
 ```php
 $request = $translator->translateRequest(
-    new TranslateRequest(['Hello'], 'fr', null, [])
+    new TranslateRequest(['Hello'], 'fr')
 );
 
 $result = $request->getResult();
@@ -121,7 +122,7 @@ BeLocalEngine::withApiKey(string $apiKey, int $timeout = 30): BeLocalEngine
 #### t() -- translate single text
 
 ```php
-$engine->t(string $text, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): string
+$engine->t(string $text, string $lang, ?string $sourceLang = null, string $userContext = '', bool $managed = false): string
 ```
 
 | Parameter | Type | Description | Default  |
@@ -137,7 +138,7 @@ Returns translated text, or original text on error.
 #### tMany() -- translate multiple texts
 
 ```php
-$engine->tMany(array $texts, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): array
+$engine->tMany(array $texts, string $lang, ?string $sourceLang = null, string $userContext = '', bool $managed = false): array
 ```
 
 Same parameters as `t()`, but `$texts` is `array<string>`. Returns `array<string>`.
@@ -163,15 +164,15 @@ Takes `array<TranslateRequest>`, returns the same array with results filled. Thr
 ### TranslateRequest
 
 ```php
-new TranslateRequest(array $texts, string $lang, ?string $sourceLang, array $context)
+new TranslateRequest(array $texts, string $lang, ?string $sourceLang = null, array $context = [])
 ```
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | $texts | array\<string\> | Texts to translate |
 | $lang | string | Target language code |
-| $sourceLang | string\|null | Source language (null = auto-detect) |
-| $context | array\<string, string\> | Context key-value pairs (optional). May include `user_ctx`, `entity_key`, `entity_id`, `cache_type`, `user_type`. |
+| $sourceLang | string\|null | Source language (null = auto-detect). Optional, defaults to null. |
+| $context | array\<string, string\> | Context key-value pairs. Optional, defaults to []. May include `user_ctx`, `entity_key`, `entity_id`, `cache_type`, `user_type`. |
 
 Methods: `getTexts()`, `getLang()`, `getSourceLang()`, `getContext()`, `getRequestId()`, `isCompleted()`, `isSuccessful()`, `getResult()`.
 
