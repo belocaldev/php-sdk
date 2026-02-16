@@ -47,13 +47,16 @@ class BeLocalEngine
      * @param string $text The text to translate
      * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
      * @param string|null $sourceLang Source language code (optional, auto-detect if null)
-     * @param string $userContext User context string for translation context
+     * @param string $userContext User context string for translation context (optional)
      * @param bool $managed Use managed translations cache type (editable translations)
      * @return string Translated text, or original text if translation fails
      */
-    public function t(string $text, string $lang, ?string $sourceLang, string $userContext, bool $managed = false): string
+    public function t(string $text, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): string
     {
-        $ctx = [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext];
+        $ctx = [];
+        if ($userContext !== '') {
+            $ctx[TranslateRequest::CTX_KEY_USER_CONTEXT] = $userContext;
+        }
         if ($managed) {
             $ctx[TranslateRequest::CTX_KEY_CACHE_TYPE] = TranslateRequest::CACHE_TYPE_MANAGED;
         }
@@ -72,13 +75,16 @@ class BeLocalEngine
      * @param array<string> $texts Array of texts to translate
      * @param string $lang Target language code (e.g., 'en', 'es', 'fr')
      * @param string|null $sourceLang Source language code (optional, auto-detect if null)
-     * @param string $userContext User context string for translation context
+     * @param string $userContext User context string for translation context (optional)
      * @param bool $managed Use managed translations cache type (editable translations)
      * @return array<string> Array of translated texts, or original texts if translation fails
      */
-    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext, bool $managed = false): array
+    public function tMany(array $texts, string $lang, ?string $sourceLang, string $userContext = '', bool $managed = false): array
     {
-        $ctx = [TranslateRequest::CTX_KEY_USER_CONTEXT => $userContext];
+        $ctx = [];
+        if ($userContext !== '') {
+            $ctx[TranslateRequest::CTX_KEY_USER_CONTEXT] = $userContext;
+        }
         if ($managed) {
             $ctx[TranslateRequest::CTX_KEY_CACHE_TYPE] = TranslateRequest::CACHE_TYPE_MANAGED;
         }

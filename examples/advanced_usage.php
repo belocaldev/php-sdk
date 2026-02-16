@@ -58,14 +58,7 @@ $comments = [
 $allTexts = array_merge([$newsArticle], $comments);
 
 // Create translation request for news article and comments
-$request = new TranslateRequest(
-    $allTexts,
-    'ru', // Target language: Russian
-    'en', // Source language: English
-    [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'News article published on technology blog with user comments section displayed below the article'
-    ]
-);
+$request = new TranslateRequest($allTexts, 'ru', 'en', []);
 
 // Translate the request
 $request = $engine->translateRequest($request);
@@ -156,12 +149,12 @@ $product1Texts = array_merge(
 );
 $requests[] = new TranslateRequest(
     $product1Texts,
-    'es', // Spanish
+    'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
-        'entity_key' => 'product',
-        'entity_id' => (string)$product1['id']
+        TranslateRequest::CTX_KEY_ENTITY_KEY => 'product',
+        TranslateRequest::CTX_KEY_ENTITY_ID => (string)$product1['id'],
+        TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
     ]
 );
 
@@ -173,12 +166,12 @@ $product2Texts = array_merge(
 );
 $requests[] = new TranslateRequest(
     $product2Texts,
-    'es', // Spanish
+    'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
-        'entity_key' => 'product',
-        'entity_id' => (string)$product2['id']
+        TranslateRequest::CTX_KEY_ENTITY_KEY => 'product',
+        TranslateRequest::CTX_KEY_ENTITY_ID => (string)$product2['id'],
+        TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
     ]
 );
 
@@ -190,12 +183,12 @@ $product3Texts = array_merge(
 );
 $requests[] = new TranslateRequest(
     $product3Texts,
-    'es', // Spanish
+    'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
-        'entity_key' => 'product',
-        'entity_id' => (string)$product3['id']
+        TranslateRequest::CTX_KEY_ENTITY_KEY => 'product',
+        TranslateRequest::CTX_KEY_ENTITY_ID => (string)$product3['id'],
+        TranslateRequest::CTX_KEY_CACHE_TYPE => TranslateRequest::CACHE_TYPE_MANAGED,
     ]
 );
 
@@ -249,7 +242,6 @@ $nameRequests[] = new TranslateRequest(
     'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
         'entity_key' => 'product',
         'entity_id' => (string)$product1['id']
     ]
@@ -261,7 +253,6 @@ $nameRequests[] = new TranslateRequest(
     'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
         'entity_key' => 'product',
         'entity_id' => (string)$product2['id']
     ]
@@ -273,7 +264,6 @@ $nameRequests[] = new TranslateRequest(
     'es',
     'en',
     [
-        TranslateRequest::CTX_KEY_USER_CONTEXT => 'Product card displayed on e-commerce website product listing page',
         'entity_key' => 'product',
         'entity_id' => (string)$product3['id']
     ]

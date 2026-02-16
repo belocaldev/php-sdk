@@ -30,9 +30,11 @@ Sugar methods `t()` and `tMany()` for quick translations.
 | # | Scenario | Method | Managed | Languages |
 |---|----------|--------|---------|-----------|
 | 1 | Store categories list | `tMany()` | yes | EN → RU |
-| 2 | User search query | `t()` | no | EN → ES |
+| 2 | Homonym (crane) with user_context | `t()` | no | EN → RU |
 | 3 | Product reviews | `tMany()` | no | EN → FR |
 | 4 | Country name | `t()` | yes | EN → DE |
+
+**Note:** `user_context` is optional in all methods (`t()`, `tMany()`, `translateRequest()`, `translateMultiRequest()`).
 
 ## advanced_usage.php
 

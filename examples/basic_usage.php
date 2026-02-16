@@ -57,8 +57,7 @@ $storeCategories = [
 ];
 
 // Translate categories with managed translations cache (allows future edits)
-// User context explains that these are e-commerce store navigation categories
-$translatedCategories = $engine->tMany($storeCategories, 'ru', 'en', 'E-commerce store navigation menu categories displayed in the header', true);
+$translatedCategories = $engine->tMany($storeCategories, 'ru', 'en', '', true);
 
 echo "Original categories (EN):\n";
 foreach ($storeCategories as $index => $category) {
@@ -73,22 +72,35 @@ foreach ($translatedCategories as $index => $translated) {
 echo "\n";
 
 // ============================================================================
-// Example 2: t() - Translation of search query for product search
+// Example 2: t() - Homonym translation with user_context
 // ============================================================================
 
-echo "=== Example 2: Translating Search Query ===\n";
-echo "Translating user search query for product search on another language\n\n";
+echo "=== Example 2: Translating Homonym with user_context ===\n";
+echo "The word 'crane' has multiple meanings. user_context clarifies which translation to use.\n\n";
 
-// User enters search query in their language
-$userSearchQuery = 'wireless headphones';
+// Homonym: crane = bird OR construction equipment
+$homonym = 'crane';
 
-// Translate search query to Spanish for searching products in Spanish catalog
-// User context explains that this is a user-entered search query for product search
-$translatedQuery = $engine->t($userSearchQuery, 'es', 'en', 'User search query entered in product search box on e-commerce website');
+// Without context, translation could be ambiguous. user_context specifies the site topic
+$translatedAsEquipment = $engine->t(
+    $homonym,
+    'ru',
+    'en',
+    'Website for construction services'
+);
 
-echo "Original search query (EN): $userSearchQuery\n";
-echo "Translated query (ES): $translatedQuery\n";
-echo "\nNow you can use '$translatedQuery' to search products in Spanish catalog\n";
+// Same word, different context: wildlife site
+$translatedAsBird = $engine->t(
+    $homonym,
+    'ru',
+    'en',
+    'Website about rare and endangered animal species'
+);
+
+echo "Original (EN): $homonym\n";
+echo "As construction equipment (RU): $translatedAsEquipment\n";
+echo "As bird (RU): $translatedAsBird\n";
+echo "\nuser_context helps the translator choose the correct meaning for ambiguous words.\n";
 
 echo "\n";
 
@@ -109,8 +121,7 @@ $reviews = [
 ];
 
 // Translate reviews to French
-// User context explains that these are customer product reviews displayed on product pages
-$translatedReviews = $engine->tMany($reviews, 'fr', 'en', 'Customer product reviews displayed on product detail page');
+$translatedReviews = $engine->tMany($reviews, 'fr', 'en');
 
 echo "Original reviews (EN):\n";
 foreach ($reviews as $index => $review) {
@@ -135,8 +146,7 @@ echo "Translating country name (managed translations cache allows corrections)\n
 $countryName = 'United States';
 
 // Translate country name to German with managed translations cache (managed=true)
-// User context explains that this is a country name displayed in shipping address form
-$translatedCountry = $engine->t($countryName, 'de', 'en', 'Country name displayed in shipping address form during checkout', true);
+$translatedCountry = $engine->t($countryName, 'de', 'en', '', true);
 
 echo "Original country name (EN): $countryName\n";
 echo "Translated country name (DE): $translatedCountry\n";
