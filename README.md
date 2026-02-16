@@ -143,8 +143,6 @@ $engine->tMany(array $texts, string $lang, ?string $sourceLang = null, string $u
 
 Same parameters as `t()`, but `$texts` is `array<string>`. Returns `array<string>`.
 
-**Note:** `user_context` (and `user_ctx` in TranslateRequest context) is optional in all methods — `t()`, `tMany()`, `translateRequest()`, `translateMultiRequest()`.
-
 #### translateRequest() -- single request with full result
 
 ```php
