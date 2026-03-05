@@ -170,9 +170,11 @@ new TranslateRequest(array $texts, string $lang, ?string $sourceLang = null, arr
 | $texts | array\<string\> | Texts to translate |
 | $lang | string | Target language code |
 | $sourceLang | string\|null | Source language (null = auto-detect). Optional, defaults to null. |
-| $context | array\<string, string\> | Context key-value pairs. Optional, defaults to []. May include `user_ctx`, `entity_key`, `entity_id`, `cache_type`, `user_type`. |
+| $context | array\<string, string\> | Context key-value pairs. Optional, defaults to []. May include `user_ctx`, `entity_key`, `entity_id`, `cache_type`, `user_type`, `translation_style`. |
 
 Methods: `getTexts()`, `getLang()`, `getSourceLang()`, `getContext()`, `getRequestId()`, `isCompleted()`, `isSuccessful()`, `getResult()`.
+
+Context keys: `CTX_KEY_USER_TYPE`, `CTX_KEY_USER_CONTEXT`, `CTX_KEY_CACHE_TYPE`, `CTX_KEY_ENTITY_KEY`, `CTX_KEY_ENTITY_ID`, `CTX_KEY_TRANSLATION_STYLE`. `translation_style` values: `TRANSLATION_STYLE_AUTO`, `TRANSLATION_STYLE_FORMAL`, `TRANSLATION_STYLE_INFORMAL`, `TRANSLATION_STYLE_TECHNICAL`, `TRANSLATION_STYLE_MARKETING`, `TRANSLATION_STYLE_LITERARY`.
 
 ### TranslateManyResult
 

@@ -12,6 +12,7 @@ final class TranslateRequest
     public const CTX_KEY_CACHE_TYPE = 'cache_type';
     public const CTX_KEY_ENTITY_KEY = 'entity_key';
     public const CTX_KEY_ENTITY_ID = 'entity_id';
+    public const CTX_KEY_TRANSLATION_STYLE = 'translation_style';
 
     /** @var array<string> All allowed context keys */
     private const ALLOWED_CTX_KEYS = [
@@ -20,6 +21,7 @@ final class TranslateRequest
         self::CTX_KEY_CACHE_TYPE,
         self::CTX_KEY_ENTITY_KEY,
         self::CTX_KEY_ENTITY_ID,
+        self::CTX_KEY_TRANSLATION_STYLE,
     ];
 
     // Values for user_type
@@ -28,6 +30,14 @@ final class TranslateRequest
 
     // Values for cache_type
     public const CACHE_TYPE_MANAGED = 'managed';
+
+    // Values for translation_style
+    public const TRANSLATION_STYLE_AUTO = 'auto';
+    public const TRANSLATION_STYLE_FORMAL = 'formal';
+    public const TRANSLATION_STYLE_INFORMAL = 'informal';
+    public const TRANSLATION_STYLE_TECHNICAL = 'technical';
+    public const TRANSLATION_STYLE_MARKETING = 'marketing';
+    public const TRANSLATION_STYLE_LITERARY = 'literary';
 
     /** @var array<string> */
     private array $texts;
@@ -130,7 +140,7 @@ final class TranslateRequest
     /**
      * Validates that context array has string keys and values, and only allowed keys
      *
-     * Allowed keys: user_type, user_ctx, cache_type, entity_key, entity_id
+     * Allowed keys: user_type, user_ctx, cache_type, entity_key, entity_id, translation_style
      *
      * @param array $context
      * @throws \InvalidArgumentException
