@@ -13,6 +13,7 @@ final class TranslateRequest
     public const CTX_KEY_ENTITY_KEY = 'entity_key';
     public const CTX_KEY_ENTITY_ID = 'entity_id';
     public const CTX_KEY_TRANSLATION_STYLE = 'translation_style';
+    public const CTX_KEY_MARKUP = 'markup';
 
     /** @var array<string> All allowed context keys */
     private const ALLOWED_CTX_KEYS = [
@@ -22,6 +23,7 @@ final class TranslateRequest
         self::CTX_KEY_ENTITY_KEY,
         self::CTX_KEY_ENTITY_ID,
         self::CTX_KEY_TRANSLATION_STYLE,
+        self::CTX_KEY_MARKUP,
     ];
 
     // Values for user_type
@@ -38,6 +40,18 @@ final class TranslateRequest
     public const TRANSLATION_STYLE_TECHNICAL = 'technical';
     public const TRANSLATION_STYLE_MARKETING = 'marketing';
     public const TRANSLATION_STYLE_LITERARY = 'literary';
+
+    // Values for markup
+    public const MARKUP_HTML = 'html';
+    public const MARKUP_XML = 'xml';
+    public const MARKUP_CUSTOM = 'custom';
+
+    /** @var array<string> */
+    private const ALLOWED_MARKUP_VALUES = [
+        self::MARKUP_HTML,
+        self::MARKUP_XML,
+        self::MARKUP_CUSTOM,
+    ];
 
     /** @var array<string> */
     private array $texts;
@@ -140,7 +154,7 @@ final class TranslateRequest
     /**
      * Validates that context array has string keys and values, and only allowed keys
      *
-     * Allowed keys: user_type, user_ctx, cache_type, entity_key, entity_id, translation_style
+     * Allowed keys: user_type, user_ctx, cache_type, entity_key, entity_id, translation_style, markup
      *
      * @param array $context
      * @throws \InvalidArgumentException
@@ -156,6 +170,11 @@ final class TranslateRequest
             if (!in_array($key, self::ALLOWED_CTX_KEYS, true)) {
                 throw new \InvalidArgumentException(
                     sprintf('Unknown context key "%s". Allowed keys: %s', $key, implode(', ', self::ALLOWED_CTX_KEYS))
+                );
+            }
+            if ($key === self::CTX_KEY_MARKUP && !in_array($value, self::ALLOWED_MARKUP_VALUES, true)) {
+                throw new \InvalidArgumentException(
+                    sprintf('Unknown markup value "%s". Allowed values: %s', $value, implode(', ', self::ALLOWED_MARKUP_VALUES))
                 );
             }
         }

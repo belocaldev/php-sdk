@@ -427,6 +427,59 @@ class BeLocalEngineTest extends TestCase
     }
 
     /**
+     * Test that translateRequest accepts valid markup context values
+     */
+    public function testTranslateRequestWithValidMarkup()
+    {
+        $transport = $this->createMock(Transport::class);
+
+        $transport->expects($this->once())
+            ->method('sendMulti')
+            ->willReturnCallback(function($data) {
+                $this->assertSame('html', $data['requests'][0]['ctx']['markup']);
+
+                $request_id = $data['requests'][0]['request_id'];
+                return new TranslateResponse(
+                    [
+                        'results' => [
+                            [
+                                'request_id' => $request_id,
+                                'data' => ['texts' => ['<p>Bonjour</p>'], 'status' => 'translated']
+                            ]
+                        ]
+                    ],
+                    true,
+                    null,
+                    200,
+                    null,
+                    null
+                );
+            });
+
+        $engine = new BeLocalEngine($transport);
+        $request = new TranslateRequest(['<p>Hello</p>'], 'fr', null, [
+            TranslateRequest::CTX_KEY_MARKUP => TranslateRequest::MARKUP_HTML,
+        ]);
+
+        $engine->translateRequest($request);
+
+        $this->assertTrue($request->isSuccessful());
+    }
+
+    /**
+     * Test that translateRequest rejects unsupported markup values
+     */
+    public function testTranslateRequestWithInvalidMarkup()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Unknown markup value');
+
+        new TranslateRequest(['Hello'], 'fr', null, [
+            TranslateRequest::CTX_KEY_MARKUP => 'markdown',
+        ]);
+    }
+
+    /**
      * Test that TranslateRequest works without sourceLang (optional parameter)
      */
     public function testTranslateRequestWithoutSourceLang()
@@ -594,8 +647,8 @@ class BeLocalEngineTest extends TestCase
     {
         $text = 'Hello World';
         $lang = 'fr';
-        $context1 = ['user_ctx' => 'test', 'cache_type' => 'managed'];
-        $context2 = ['cache_type' => 'managed', 'user_ctx' => 'test']; // Same data, different order
+        $context1 = ['user_ctx' => 'test', 'cache_type' => 'managed', 'markup' => 'html'];
+        $context2 = ['markup' => 'html', 'cache_type' => 'managed', 'user_ctx' => 'test']; // Same data, different order
 
         $request1 = new TranslateRequest([$text], $lang, null, $context1);
         $request2 = new TranslateRequest([$text], $lang, null, $context2);
